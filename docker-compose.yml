@@ -1,0 +1,45 @@
+version: "3"
+services:
+  bitrix:
+    image: webdevops/php-dev:7.1
+    volumes:
+      - ./:/app/
+    working_dir: /app/
+    depends_on:
+      - mysql
+      - elasticsearch
+    ports:
+      - 80:80
+    environment:
+      php.short_open_tag: 1
+      php.mbstring.func_oveload: 2
+      php.display_errors: 1
+      MYSQL_HOST: mysql
+      MYSQL_DATABASE: bitrix
+      MYSQL_USER: bitrix
+      MYSQL_PASSWORD: bitrix
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+  mysql:
+    image: mysql:5.7
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: bitrix
+      MYSQL_USER: bitrix
+      MYSQL_PASSWORD: bitrix
+  elasticsearch:
+    image: elasticsearch:7.2.0
+    ports:
+      - 9200:9200
+      - 9300:9300
+    environment:
+      discovery.type: single-node
+  kibana:
+    image: kibana:7.2.0
+    depends_on:
+      - elasticsearch
+    ports:
+      - 5601:5601
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
