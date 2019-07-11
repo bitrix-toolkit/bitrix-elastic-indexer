@@ -9,6 +9,7 @@ use CCatalog;
 use CCatalogGroup;
 use CCatalogStore;
 use CCatalogStoreProduct;
+use CFile;
 use CIBlock;
 use CIBlockElement;
 use CIBlockProperty;
@@ -24,6 +25,8 @@ class IndexerTest extends TestCase
     public static function setUpBeforeClass()
     {
         global $APPLICATION;
+
+        self::tearDownAfterClass();
 
         $cIBlockType = new CIBlockType();
         $isTypeAdded = $cIBlockType->Add([
@@ -138,6 +141,8 @@ class IndexerTest extends TestCase
             $elementId = $cIBlockElement->Add([
                 'IBLOCK_ID' => $iBlockId,
                 'NAME' => $row['NAME'],
+                'PREVIEW_PICTURE' => CFile::MakeFileArray(__DIR__ . '/' . $row['IMAGE']),
+                'DETAIL_PICTURE' => CFile::MakeFileArray(__DIR__ . '/' . $row['IMAGE']),
                 'PROPERTY_VALUES' => [
                     'COLOR' => $colorValues[$row['COLOR']]['ID'],
                     'OLD_PRICE' => $row['OLD_PRICE'],
@@ -186,6 +191,11 @@ class IndexerTest extends TestCase
         while ($store = $rs->Fetch()) {
             CCatalogStore::Delete($store['ID']);
         }
+
+        $elastic = self::getElasticClient();
+        if ($elastic->indices()->exists(['index' => 'test_products'])) {
+            $elastic->indices()->delete(['index' => 'test_products']);
+        }
     }
 
     /**
@@ -216,6 +226,7 @@ class IndexerTest extends TestCase
         $this->assertInstanceOf(IndexMapping::class, $mapping);
         $this->assertContainsOnlyInstancesOf(PropertyMapping::class, $mapping->getProperties());
 
+        $this->assertEquals('integer', $mapping->getProperty('DETAIL_PICTURE')->get('type'));
         $this->assertEquals('float', $mapping->getProperty('PROPERTY_OLD_PRICE')->get('type'));
         $this->assertEquals('keyword', $mapping->getProperty('PROPERTY_COLOR')->get('type'));
         $this->assertEquals('keyword', $mapping->getProperty('PROPERTY_TAGS')->get('type'));
@@ -274,6 +285,8 @@ class IndexerTest extends TestCase
 
         $this->assertEquals($element->fields['ID'], $data['ID']);
         $this->assertEquals($element->fields['IBLOCK_ID'], $data['IBLOCK_ID']);
+        $this->assertEquals($element->fields['PREVIEW_PICTURE'], $data['PREVIEW_PICTURE']);
+        $this->assertEquals($element->fields['DETAIL_PICTURE'], $data['DETAIL_PICTURE']);
         $this->assertEquals('Notebook 15', $data['NAME']);
         $this->assertEquals(22999, $data['PROPERTY_OLD_PRICE']);
         $this->assertEquals(19999, $data['CATALOG_PRICE_' . $stack['basePriceType']['ID']]);
@@ -304,6 +317,8 @@ class IndexerTest extends TestCase
         $this->assertIsArray($data);
         $this->assertSame((int)$element->fields['ID'], $data['ID']);
         $this->assertSame((int)$element->fields['IBLOCK_ID'], $data['IBLOCK_ID']);
+        $this->assertSame((int)$element->fields['PREVIEW_PICTURE'], $data['PREVIEW_PICTURE']);
+        $this->assertSame((int)$element->fields['DETAIL_PICTURE'], $data['DETAIL_PICTURE']);
         $this->assertSame('Notebook 15', $data['NAME']);
         $this->assertSame(22999.00, $data['PROPERTY_OLD_PRICE']);
         $this->assertSame(19999.00, $data['CATALOG_PRICE_' . $stack['basePriceType']['ID']]);
@@ -313,6 +328,41 @@ class IndexerTest extends TestCase
         $this->assertSame(['sale', 'hit'], $data['PROPERTY_TAGS']);
 
         $stack['data'] = $data;
+        return $stack;
+    }
+
+    /**
+     * @depends testCanGetInfoblockMapping
+     * @param array $stack
+     * @return array
+     */
+    public function testCanPutIndexMapping(array $stack = [])
+    {
+        /** @var Indexer $indexer */
+        $indexer = $stack['indexer'];
+
+        /** @var IndexMapping $mapping */
+        $mapping = $stack['mapping'];
+
+        $existMapping = $indexer->getIndexMapping('test_products');
+        $this->assertInstanceOf(IndexMapping::class, $existMapping);
+
+        for ($i = 0; $i < 2; $i++) {
+            $isSuccess = $indexer->putIndexMapping('test_products', $mapping);
+            $this->assertTrue($isSuccess);
+
+            $existMapping = $indexer->getIndexMapping('test_products');
+            $this->assertInstanceOf(IndexMapping::class, $existMapping);
+
+            /** @var PropertyMapping $propertyMap */
+            foreach ($mapping->getProperties()->getArrayCopy() as $property => $propertyMap) {
+                $this->assertEquals(
+                    $propertyMap->getData()->getArrayCopy(),
+                    $existMapping->getProperty($property)->getData()->getArrayCopy()
+                );
+            }
+        }
+
         return $stack;
     }
 }

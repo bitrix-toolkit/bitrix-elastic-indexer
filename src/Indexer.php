@@ -65,6 +65,59 @@ class Indexer
     }
 
     /**
+     * @param string $index
+     * @return IndexMapping
+     */
+    public function getIndexMapping(string $index)
+    {
+
+        if ($this->getElastic()->indices()->exists(['index' => $index])) {
+            $response = $this->getElastic()->indices()->getMapping(['index' => $index]);
+            $mappingData = $response[$index]['mappings'] ?: [];
+        } else {
+            $mappingData = [];
+        }
+
+        $mapping = new IndexMapping();
+        foreach ($mappingData['properties'] ?? [] as $property => $propertyData) {
+            $mapping->setProperty($property, new PropertyMapping($propertyData['type'] ?: null, $propertyData));
+        }
+
+        return $mapping;
+    }
+
+    /**
+     * @param string $index
+     * @param IndexMapping $mapping
+     * @return bool
+     */
+    public function putIndexMapping(string $index, IndexMapping $mapping)
+    {
+        if ($this->getElastic()->indices()->exists(['index' => $index])) {
+            $response = $this->getElastic()->indices()->getMapping(['index' => $index]);
+            $existMappingData = $response[$index]['mappings'] ?: [];
+        } else {
+            $this->getElastic()->indices()->create(['index' => $index]);
+            $existMappingData = [];
+        }
+
+        $mappingData = $mapping->toArray();
+        if (array_key_exists('properties', $existMappingData)) {
+            $mappingData['properties'] = array_diff_key(
+                $mappingData['properties'] ?: [],
+                $existMappingData['properties']
+            );
+        }
+
+        $response = $this->getElastic()->indices()->putMapping([
+            'index' => $index,
+            'body' => $mappingData
+        ]);
+
+        return $response['acknowledged'] ?: false;
+    }
+
+    /**
      * @param _CIBElement $element
      * @return array
      */

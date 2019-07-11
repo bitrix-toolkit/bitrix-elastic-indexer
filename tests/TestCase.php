@@ -19,7 +19,7 @@ abstract class TestCase extends PhpUnitTestCase
     /**
      * @return Client
      */
-    public function getElasticClient()
+    public static function getElasticClient()
     {
         $hosts = getenv('ELASTICSEARCH_HOSTS', true) ?: getenv('ELASTICSEARCH_HOSTS');
         $hosts = explode(',', $hosts);
