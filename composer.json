@@ -16,6 +16,7 @@
     },
     "require": {
         "php": ">=7.1",
+      "ext-json": "*",
         "elasticsearch/elasticsearch": "^7.1"
     },
     "autoload-dev": {

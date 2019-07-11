@@ -1,0 +1,38 @@
+image: docker:stable
+
+variables:
+  DOCKER_HOST: tcp://docker:2375/
+  DOCKER_DRIVER: overlay2
+
+services:
+  - docker:dind
+
+before_script:
+  - docker info
+
+test:
+  stage: test
+  script:
+    - docker run --name elasticsearch -td
+      -e discovery.type=single-node
+      elasticsearch:7.2.0
+    - docker run --name mysql -td
+      -e MYSQL_RANDOM_ROOT_PASSWORD=yes
+      -e MYSQL_DATABASE=bitrix
+      -e MYSQL_USER=user
+      -e MYSQL_PASSWORD=password
+      mysql:5.7
+    - docker run --name bitrix -td
+      --link mysql -v $(pwd):/app/
+      -w /app/
+      -e php.short_open_tag=1
+      -e php.mbstring.func_overload=2
+      -e php.display_errors=1
+      -e MYSQL_HOST=mysql
+      -e MYSQL_DATABASE=bitrix
+      -e MYSQL_USER=user
+      -e MYSQL_PASSWORD=password
+      -e ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
+      webdevops/php-dev:7.1
+    - docker exec -i -w /app/ bitrix composer install -n --prefer-dist
+    - docker exec -i -w /app/ bitrix vendor/bin/phpunit --colors=never --coverage-text --whitelist src/
