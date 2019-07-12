@@ -13,6 +13,7 @@ use CFile;
 use CIBlock;
 use CIBlockElement;
 use CIBlockProperty;
+use CIBlockSection;
 use CIBlockType;
 use CPrice;
 use Elasticsearch\Client;
@@ -48,10 +49,77 @@ class IndexerTest extends TestCase
             'CODE' => 'PRODUCTS',
             'IBLOCK_TYPE_ID' => 'elastic_test',
             'NAME' => 'Тестовые товары',
-            'GROUP_ID' => ['1' => 'X', '2' => 'W']
+            'GROUP_ID' => ['1' => 'X', '2' => 'W'],
+            'DETAIL_PAGE_URL' => '/catalog/#SECTION_CODE_PATH#//#ELEMENT_ID#/'
         ]);
 
         self::assertNotEmpty($iBlockId, $cIBlock->LAST_ERROR);
+
+        $cIBlockSection = new CIBlockSection();
+        $electronicSectionId = $cIBlockSection->Add([
+            'IBLOCK_ID' => $iBlockId,
+            'IBLOCK_SECTION_ID' => null,
+            'CODE' => 'electronic',
+            'NAME' => 'Электроника',
+            'ACTIVE' => 'Y'
+        ]);
+
+        self::assertNotEmpty($electronicSectionId, $cIBlockSection->LAST_ERROR);
+
+        $cIBlockSection = new CIBlockSection();
+        $mobileSectionId = $cIBlockSection->Add([
+            'IBLOCK_ID' => $iBlockId,
+            'IBLOCK_SECTION_ID' => $electronicSectionId,
+            'CODE' => 'mobile',
+            'NAME' => 'Мобильная техника',
+            'ACTIVE' => 'Y'
+        ]);
+
+        self::assertNotEmpty($mobileSectionId, $cIBlockSection->LAST_ERROR);
+
+        $cIBlockSection = new CIBlockSection();
+        $computerSectionId = $cIBlockSection->Add([
+            'IBLOCK_ID' => $iBlockId,
+            'IBLOCK_SECTION_ID' => $electronicSectionId,
+            'CODE' => 'computer',
+            'NAME' => 'Компьютеры',
+            'ACTIVE' => 'Y'
+        ]);
+
+        self::assertNotEmpty($computerSectionId, $cIBlockSection->LAST_ERROR);
+
+        $cIBlockSection = new CIBlockSection();
+        $phoneSectionId = $cIBlockSection->Add([
+            'IBLOCK_ID' => $iBlockId,
+            'IBLOCK_SECTION_ID' => $mobileSectionId,
+            'CODE' => 'phone',
+            'NAME' => 'Телефоны',
+            'ACTIVE' => 'Y'
+        ]);
+
+        self::assertNotEmpty($phoneSectionId, $cIBlockSection->LAST_ERROR);
+
+        $cIBlockSection = new CIBlockSection();
+        $tabletSectionId = $cIBlockSection->Add([
+            'IBLOCK_ID' => $iBlockId,
+            'IBLOCK_SECTION_ID' => $mobileSectionId,
+            'CODE' => 'tablet',
+            'NAME' => 'Планшеты',
+            'ACTIVE' => 'Y'
+        ]);
+
+        self::assertNotEmpty($tabletSectionId, $cIBlockSection->LAST_ERROR);
+
+        $cIBlockSection = new CIBlockSection();
+        $notebookSectionId = $cIBlockSection->Add([
+            'IBLOCK_ID' => $iBlockId,
+            'IBLOCK_SECTION_ID' => $computerSectionId,
+            'CODE' => 'notebook',
+            'NAME' => 'Ноутбуки',
+            'ACTIVE' => 'Y'
+        ]);
+
+        self::assertNotEmpty($notebookSectionId, $cIBlockSection->LAST_ERROR);
 
         $isCatalogAdded = CCatalog::Add([
             'IBLOCK_ID' => $iBlockId,
@@ -138,8 +206,25 @@ class IndexerTest extends TestCase
         $elementIds = [];
         while (!feof($csv)) {
             $row = array_combine($keys, fgetcsv($csv));
+
+            $sectionIds = [];
+            $sectionCodes = explode(',', $row['CATEGORY']);
+            if ($sectionCodes) {
+                $rs = CIBlockSection::GetList(
+                    ['ID' => 'ASC'],
+                    ['IBLOCK_ID' => $iBlockId, 'CODE' => $sectionCodes],
+                    false,
+                    ['ID', 'IBLOCK_ID']
+                );
+
+                while ($section = $rs->Fetch()) {
+                    $sectionIds[] = $section['ID'];
+                }
+            }
+
             $elementId = $cIBlockElement->Add([
                 'IBLOCK_ID' => $iBlockId,
+                'IBLOCK_SECTION' => $sectionIds,
                 'NAME' => $row['NAME'],
                 'PREVIEW_PICTURE' => CFile::MakeFileArray(__DIR__ . '/' . $row['IMAGE']),
                 'DETAIL_PICTURE' => CFile::MakeFileArray(__DIR__ . '/' . $row['IMAGE']),
@@ -283,6 +368,17 @@ class IndexerTest extends TestCase
         $this->assertIsArray($data);
         $this->assertTrue(!empty($data));
 
+        $groups = [];
+        $navChain = [];
+        $rs = CIBlockElement::GetElementGroups($element->fields['ID']);
+        while ($group = $rs->Fetch()) {
+            $groups[] = (int)$group['ID'];
+            $navChainRs = CIBlockSection::GetNavChain($group['IBLOCK_ID'], $group['ID']);
+            while ($chain = $navChainRs->Fetch()) {
+                $navChain[] = (int)$chain['ID'];
+            }
+        }
+
         $this->assertEquals($element->fields['ID'], $data['ID']);
         $this->assertEquals($element->fields['IBLOCK_ID'], $data['IBLOCK_ID']);
         $this->assertEquals($element->fields['PREVIEW_PICTURE'], $data['PREVIEW_PICTURE']);
@@ -294,6 +390,8 @@ class IndexerTest extends TestCase
         $this->assertEquals(90, $data['CATALOG_STORE_AMOUNT_' . $stack['mainStore']['ID']]);
         $this->assertEquals(45, $data['CATALOG_STORE_AMOUNT_' . $stack['secondaryStore']['ID']]);
         $this->assertEquals(['sale', 'hit'], $data['PROPERTY_TAGS']);
+        $this->assertEquals($groups, $data['GROUPS']);
+        $this->assertEquals($navChain, $data['NAV_CHAIN']);
 
         $stack['element'] = $element;
         $stack['rawData'] = $data;
@@ -313,6 +411,17 @@ class IndexerTest extends TestCase
         /** @var _CIBElement $element */
         $element = $stack['element'];
 
+        $groups = [];
+        $navChain = [];
+        $rs = CIBlockElement::GetElementGroups($element->fields['ID']);
+        while ($group = $rs->Fetch()) {
+            $groups[] = (int)$group['ID'];
+            $navChainRs = CIBlockSection::GetNavChain($group['IBLOCK_ID'], $group['ID']);
+            while ($chain = $navChainRs->Fetch()) {
+                $navChain[] = (int)$chain['ID'];
+            }
+        }
+
         $data = $indexer->normalizeData($stack['mapping'], $stack['rawData']);
         $this->assertIsArray($data);
         $this->assertSame((int)$element->fields['ID'], $data['ID']);
@@ -326,6 +435,8 @@ class IndexerTest extends TestCase
         $this->assertSame(90, $data['CATALOG_STORE_AMOUNT_' . $stack['mainStore']['ID']]);
         $this->assertSame(45, $data['CATALOG_STORE_AMOUNT_' . $stack['secondaryStore']['ID']]);
         $this->assertSame(['sale', 'hit'], $data['PROPERTY_TAGS']);
+        $this->assertSame($navChain, $data['NAV_CHAIN']);
+        $this->assertSame($groups, $data['GROUPS']);
 
         $stack['data'] = $data;
         return $stack;

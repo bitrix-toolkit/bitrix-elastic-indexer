@@ -2,8 +2,15 @@
 
 [![pipeline status](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/badges/master/pipeline.svg)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/pipelines)
 [![coverage report](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/badges/master/coverage.svg)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs)
+[![PHP from Packagist](https://img.shields.io/packagist/php-v/sheerockoff/bitrix-elastic-indexer.svg)](https://packagist.org/packages/sheerockoff/bitrix-elastic-indexer)
 
 Хелпер для индексации данных инфоблока Bitrix в Elasticsearch.
+
+## Установка
+
+```bash
+composer require sheerockoff/bitrix-elastic-indexer:dev-master
+```
 
 ## Быстрый старт
 

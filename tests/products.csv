@@ -1,12 +1,12 @@
-NAME,OLD_PRICE,PRICE,COLOR,IMAGE,MAIN_STORE,SECONDARY_STORE,TAGS
-Phone M3,12999,7999,Red,512x512.png,10,5,"sale"
-Phone M3,12999,7999,Blue,512x512.png,20,10,"sale"
-Phone M3,12999,7999,Black,512x512.png,30,15,"sale"
-Phone M5,14999,9999,Red,512x512.png,40,20,"new,sale"
-Phone M5,14999,9999,Blue,512x512.png,50,25,"new,sale"
-Phone M5,14999,9999,Black,512x512.png,60,30,"new,sale,hit"
-Tablet,29999,24999,Silver,512x512.png,70,35,"sale,hit"
-Tablet 4G,33999,29999,Silver,512x512.png,80,40,"sale,new"
-Notebook 15,22999,19999,Black,512x512.png,90,45,"sale,hit"
-Notebook 17 Gaming,,74999,Black,512x512.png,100,50,
-Ultrabook 13,120000,99999,Silver,512x512.png,110,55,"sale"
+NAME,OLD_PRICE,PRICE,COLOR,IMAGE,MAIN_STORE,SECONDARY_STORE,TAGS,CATEGORY
+Phone M3,12999,7999,Red,512x512.png,10,5,"sale",phone
+Phone M3,12999,7999,Blue,512x512.png,20,10,"sale",phone
+Phone M3,12999,7999,Black,512x512.png,30,15,"sale",phone
+Phone M5,14999,9999,Red,512x512.png,40,20,"new,sale",phone
+Phone M5,14999,9999,Blue,512x512.png,50,25,"new,sale",phone
+Phone M5,14999,9999,Black,512x512.png,60,30,"new,sale,hit",phone
+Tablet,29999,24999,Silver,512x512.png,70,35,"sale,hit",tablet
+Tablet 4G,33999,29999,Silver,512x512.png,80,40,"sale,new","tablet,phone"
+Notebook 15,22999,19999,Black,512x512.png,90,45,"sale,hit","computer,notebook"
+Notebook 17 Gaming,,74999,Black,512x512.png,100,50,,notebook
+Ultrabook 13,120000,99999,Silver,512x512.png,110,55,"sale",notebook

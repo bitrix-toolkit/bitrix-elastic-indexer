@@ -6,7 +6,9 @@ use _CIBElement;
 use CCatalogGroup;
 use CCatalogStore;
 use CCatalogStoreProduct;
+use CIBlockElement;
 use CIBlockProperty;
+use CIBlockSection;
 use CModule;
 use CPrice;
 use Elasticsearch\Client;
@@ -47,6 +49,9 @@ class Indexer
                 PropertyMapping::fromBitrixProperty($property)
             );
         }
+
+        $mapping->setProperty('GROUPS', new PropertyMapping('integer'));
+        $mapping->setProperty('NAV_CHAIN', new PropertyMapping('integer'));
 
         if (CModule::IncludeModule('catalog')) {
             $rs = CCatalogStore::GetList();
@@ -134,6 +139,25 @@ class Indexer
         foreach ($element->GetProperties() as $property) {
             $data['PROPERTY_' . $property['CODE']] = $property['VALUE'];
         }
+
+        $groups = [];
+        $navChain = [];
+        $rs = CIBlockElement::GetElementGroups($element->fields['ID']);
+        while ($group = $rs->Fetch()) {
+            $groups[] = $group;
+            $navChainRs = CIBlockSection::GetNavChain($group['IBLOCK_ID'], $group['ID']);
+            while ($chain = $navChainRs->Fetch()) {
+                $navChain[] = $chain;
+            }
+        }
+
+        $data['GROUPS'] = array_map(function ($group) {
+            return (int)$group['ID'];
+        }, $groups);
+
+        $data['NAV_CHAIN'] = array_map(function ($group) {
+            return (int)$group['ID'];
+        }, $navChain);
 
         if (CModule::IncludeModule('catalog')) {
             $rs = CCatalogStoreProduct::GetList(null, ['PRODUCT_ID' => $element->fields['ID']]);
