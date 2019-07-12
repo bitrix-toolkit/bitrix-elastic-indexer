@@ -64,7 +64,7 @@ $normalizedData = $indexer->normalizeData($elasticMapping, $rawData);
 Сохраняем данные в индексе Elasticsearch.
 
 ```php
-$indexer->put('goods', $normalizedData);
+$indexer->put('goods', $id, $normalizedData);
 ```
 
 Ищем по индексу используя фильтры в формате похожем на формат Bitrix.
