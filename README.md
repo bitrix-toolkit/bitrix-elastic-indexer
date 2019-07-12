@@ -31,7 +31,21 @@ $indexer = new Indexer($elastic);
 Получаем карту индекса для инфоблока.
 
 ```php
-$mapping = $indexer->getInfoBlockMapping($iBlockId);
+$infoBlockMapping = $indexer->getInfoBlockMapping($iBlockId);
+```
+
+Обновляем карту индекса в Elasticsearch. Метод обновит карту только тех свойств,
+которые отсутствуют в текущем индексе. Карты существующих свойств в индексе
+изменяться не будут, чтобы избежать ошибок.
+
+```php
+$indexer->putIndexMapping('goods', $infoBlockMapping);
+```
+
+Получаем текущую карту индекса из Elasticsearch.
+
+```php
+$elasticMapping = $indexer->getIndexMapping('goods');
 ```
 
 Получаем сырые данные индекса для элемента.
@@ -41,8 +55,8 @@ $mapping = $indexer->getInfoBlockMapping($iBlockId);
 $rawData = $indexer->getElementIndexData($element);
 ```
 
-Нормализуем сырые данные индекса в соответствии с картой индекса.
+Нормализуем сырые данные индекса в соответствии с картой индекса Elasticsearch.
 
 ```php
-$data = $indexer->normalizeData($mapping, $rawData);
+$data = $indexer->normalizeData($elasticMapping, $rawData);
 ```
