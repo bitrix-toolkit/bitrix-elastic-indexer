@@ -12,6 +12,7 @@ use CIBlockSection;
 use CModule;
 use CPrice;
 use Elasticsearch\Client;
+use InvalidArgumentException;
 
 class Indexer
 {
@@ -50,8 +51,11 @@ class Indexer
             );
         }
 
-        $mapping->setProperty('GROUPS', new PropertyMapping('integer'));
-        $mapping->setProperty('NAV_CHAIN', new PropertyMapping('integer'));
+        $mapping->setProperty('GROUP_IDS', new PropertyMapping('integer'));
+        $mapping->setProperty('GROUP_CODES', new PropertyMapping('keyword'));
+
+        $mapping->setProperty('NAV_CHAIN_IDS', new PropertyMapping('integer'));
+        $mapping->setProperty('NAV_CHAIN_CODES', new PropertyMapping('keyword'));
 
         if (CModule::IncludeModule('catalog')) {
             $rs = CCatalogStore::GetList();
@@ -73,7 +77,7 @@ class Indexer
      * @param string $index
      * @return IndexMapping
      */
-    public function getIndexMapping(string $index)
+    public function getMapping(string $index)
     {
 
         if ($this->getElastic()->indices()->exists(['index' => $index])) {
@@ -96,7 +100,7 @@ class Indexer
      * @param IndexMapping $mapping
      * @return bool
      */
-    public function putIndexMapping(string $index, IndexMapping $mapping)
+    public function putMapping(string $index, IndexMapping $mapping)
     {
         if ($this->getElastic()->indices()->exists(['index' => $index])) {
             $response = $this->getElastic()->indices()->getMapping(['index' => $index]);
@@ -126,7 +130,7 @@ class Indexer
      * @param _CIBElement $element
      * @return array
      */
-    public function getElementIndexData(_CIBElement $element)
+    public function getElementRawData(_CIBElement $element)
     {
         $data = [];
 
@@ -151,13 +155,21 @@ class Indexer
             }
         }
 
-        $data['GROUPS'] = array_map(function ($group) {
+        $data['GROUP_IDS'] = array_map(function ($group) {
             return (int)$group['ID'];
         }, $groups);
 
-        $data['NAV_CHAIN'] = array_map(function ($group) {
+        $data['GROUP_CODES'] = array_values(array_filter(array_map(function ($group) {
+            return $group['CODE'];
+        }, $groups)));
+
+        $data['NAV_CHAIN_IDS'] = array_map(function ($group) {
             return (int)$group['ID'];
         }, $navChain);
+
+        $data['NAV_CHAIN_CODES'] = array_values(array_filter(array_map(function ($group) {
+            return $group['CODE'];
+        }, $navChain)));
 
         if (CModule::IncludeModule('catalog')) {
             $rs = CCatalogStoreProduct::GetList(null, ['PRODUCT_ID' => $element->fields['ID']]);
@@ -202,5 +214,193 @@ class Indexer
         }
 
         return $normalizedData;
+    }
+
+    /**
+     * @param string $index
+     * @param int|null $id
+     * @param array $data
+     * @return bool
+     */
+    public function put(string $index, ?int $id, array $data)
+    {
+        $params = [
+            'index' => $index,
+            'id' => $id,
+            'type' => '_doc',
+            'body' => [
+                'doc' => $data,
+                'upsert' => $data
+            ]
+        ];
+
+        $response = $this->getElastic()->update($params);
+
+        return isset($response['result']) && in_array($response['result'], ['created', 'updated', 'noop']);
+    }
+
+    /**
+     * @param string $index
+     * @param array $filter
+     * @return array
+     */
+    public function search(string $index, array $filter)
+    {
+        $mapping = $this->getMapping($index);
+        $filter = $this->prefabFilter($filter);
+        $filter = $this->normalizeFilter($mapping, $filter);
+        $query = $this->prepareFilterQuery($filter);
+        return $this->getElastic()->search(['index' => $index, 'body' => ['query' => $query]]);
+    }
+
+    /**
+     * @param array $filter
+     * @return array
+     */
+    private function prefabFilter(array $filter)
+    {
+        $changedFilter = $filter;
+        $includeSubsections = false;
+        foreach ($filter as $key => $rawValue) {
+            if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $key, $matches)) {
+                continue;
+            }
+
+            if ($matches['property'] !== 'INCLUDE_SUBSECTIONS') {
+                continue;
+            }
+
+            $includeSubsections = $rawValue && $rawValue !== 'N';
+            if (array_key_exists($key, $changedFilter)) {
+                unset($changedFilter[$key]);
+            }
+
+            break;
+        }
+
+        foreach ($filter as $key => $rawValue) {
+            if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $key, $matches)) {
+                continue;
+            }
+
+            if ($matches['property'] === 'IBLOCK_SECTION_ID' || $matches['property'] === 'SECTION_ID') {
+                if (array_key_exists($key, $changedFilter)) {
+                    unset($changedFilter[$key]);
+                }
+
+                if ($includeSubsections) {
+                    $changedFilter['NAV_CHAIN_IDS'] = $rawValue;
+                } else {
+                    $changedFilter['GROUP_IDS'] = $rawValue;
+                }
+            } elseif ($matches['property'] === 'SECTION_CODE') {
+                if (array_key_exists($key, $changedFilter)) {
+                    unset($changedFilter[$key]);
+                }
+
+                if ($includeSubsections) {
+                    $changedFilter['NAV_CHAIN_CODES'] = $rawValue;
+                } else {
+                    $changedFilter['GROUP_CODES'] = $rawValue;
+                }
+            }
+        }
+
+        return $changedFilter;
+    }
+
+    /**
+     * @param IndexMapping $mapping
+     * @param array $filter
+     * @return array
+     */
+    private function normalizeFilter(IndexMapping $mapping, array $filter)
+    {
+        foreach ($filter as $k => $v) {
+            if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $k, $matches)) {
+                throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+            }
+
+            $property = $matches['property'];
+
+            if (!$mapping->getProperties()->offsetExists($property)) {
+                throw new InvalidArgumentException("$property не найден в карте индекса.");
+            }
+
+            if (is_array($v)) {
+                $value = array_map(function ($v) use ($mapping, $property) {
+                    return $mapping->getProperty($property)->normalizeValue($v);
+                }, $v);
+            } else {
+                $value = $mapping->getProperty($property)->normalizeValue($v);
+            }
+
+            $filter[$k] = $value;
+        }
+
+        return $filter;
+    }
+
+    /**
+     * @param array $filter
+     * @return array
+     */
+    private function prepareFilterQuery(array $filter)
+    {
+        $operatorMap = [
+            '' => function ($k, $v) {
+                $query = is_array($v) ? 'terms' : 'term';
+                return ['must' => [[$query => [$k => $v]]]];
+            },
+            '=' => function ($k, $v) {
+                $query = is_array($v) ? 'terms' : 'term';
+                return ['must' => [[$query => [$k => $v]]]];
+            },
+            '!' => function ($k, $v) {
+                $query = is_array($v) ? 'terms' : 'term';
+                return ['must_not' => [[$query => [$k => $v]]]];
+            },
+            '%' => function ($k, $v) {
+                return ['must' => [['match_phrase' => [$k => $v]]]];
+            },
+            '>' => function ($k, $v) {
+                return ['must' => [['range' => [$k => ['gt' => $v]]]]];
+            },
+            '>=' => function ($k, $v) {
+                return ['must' => [['range' => [$k => ['gte' => $v]]]]];
+            },
+            '<' => function ($k, $v) {
+                return ['must' => [['range' => [$k => ['lt' => $v]]]]];
+            },
+            '<=' => function ($k, $v) {
+                return ['must' => [['range' => [$k => ['lte' => $v]]]]];
+            },
+            '><' => function ($k, $v) {
+                if (!isset($v[0]) || !isset($v[1])) {
+                    throw new InvalidArgumentException("Для фильтра ><$k должен быть указан массив значений.");
+                }
+
+                return ['must' => [['range' => [$k => ['gte' => $v[0], 'lte' => $v[1]]]]]];
+            }
+        ];
+
+        $terms = [];
+        foreach ($filter as $k => $value) {
+            if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $k, $matches)) {
+                throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+            }
+
+            $operator = $matches['operator'];
+            $property = $matches['property'];
+
+            if (!array_key_exists($operator, $operatorMap)) {
+                throw new InvalidArgumentException("Невозможно отфильтровать $property по оператору $operator.");
+            }
+
+            $entry = call_user_func($operatorMap[$operator], $property, $value);
+            $terms = array_merge_recursive($terms, $entry);
+        }
+
+        return ['bool' => $terms];
     }
 }

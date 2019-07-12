@@ -17,6 +17,9 @@ use CIBlockSection;
 use CIBlockType;
 use CPrice;
 use Elasticsearch\Client;
+use InvalidArgumentException;
+use ReflectionException;
+use ReflectionObject;
 use Sheerockoff\BitrixElastic\Indexer;
 use Sheerockoff\BitrixElastic\IndexMapping;
 use Sheerockoff\BitrixElastic\PropertyMapping;
@@ -302,7 +305,7 @@ class IndexerTest extends TestCase
         $basePriceType = CCatalogGroup::GetBaseGroup();
         $this->assertTrue(!empty($basePriceType));
 
-        $indexer = new Indexer($this->getElasticClient());
+        $indexer = new Indexer(self::getElasticClient());
         $this->assertInstanceOf(Indexer::class, $indexer);
         $this->assertInstanceOf(Client::class, $indexer->getElastic());
 
@@ -363,19 +366,28 @@ class IndexerTest extends TestCase
 
         /** @var Indexer $indexer */
         $indexer = $stack['indexer'];
-        $data = $indexer->getElementIndexData($element);
+        $data = $indexer->getElementRawData($element);
 
         $this->assertIsArray($data);
         $this->assertTrue(!empty($data));
 
-        $groups = [];
-        $navChain = [];
+        $groupIds = [];
+        $groupCodes = [];
+        $navChainIds = [];
+        $navChainCodes = [];
         $rs = CIBlockElement::GetElementGroups($element->fields['ID']);
         while ($group = $rs->Fetch()) {
-            $groups[] = (int)$group['ID'];
+            $groupIds[] = (int)$group['ID'];
+            if ($group['CODE']) {
+                $groupCodes[] = $group['CODE'];
+            }
+
             $navChainRs = CIBlockSection::GetNavChain($group['IBLOCK_ID'], $group['ID']);
             while ($chain = $navChainRs->Fetch()) {
-                $navChain[] = (int)$chain['ID'];
+                $navChainIds[] = (int)$chain['ID'];
+                if ($chain['CODE']) {
+                    $navChainCodes[] = $chain['CODE'];
+                }
             }
         }
 
@@ -390,8 +402,10 @@ class IndexerTest extends TestCase
         $this->assertEquals(90, $data['CATALOG_STORE_AMOUNT_' . $stack['mainStore']['ID']]);
         $this->assertEquals(45, $data['CATALOG_STORE_AMOUNT_' . $stack['secondaryStore']['ID']]);
         $this->assertEquals(['sale', 'hit'], $data['PROPERTY_TAGS']);
-        $this->assertEquals($groups, $data['GROUPS']);
-        $this->assertEquals($navChain, $data['NAV_CHAIN']);
+        $this->assertEquals($groupIds, $data['GROUP_IDS']);
+        $this->assertEquals($navChainIds, $data['NAV_CHAIN_IDS']);
+        $this->assertEquals($groupCodes, $data['GROUP_CODES']);
+        $this->assertEquals($navChainCodes, $data['NAV_CHAIN_CODES']);
 
         $stack['element'] = $element;
         $stack['rawData'] = $data;
@@ -411,14 +425,23 @@ class IndexerTest extends TestCase
         /** @var _CIBElement $element */
         $element = $stack['element'];
 
-        $groups = [];
-        $navChain = [];
+        $groupIds = [];
+        $groupCodes = [];
+        $navChainIds = [];
+        $navChainCodes = [];
         $rs = CIBlockElement::GetElementGroups($element->fields['ID']);
         while ($group = $rs->Fetch()) {
-            $groups[] = (int)$group['ID'];
+            $groupIds[] = (int)$group['ID'];
+            if ($group['CODE']) {
+                $groupCodes[] = $group['CODE'];
+            }
+
             $navChainRs = CIBlockSection::GetNavChain($group['IBLOCK_ID'], $group['ID']);
             while ($chain = $navChainRs->Fetch()) {
-                $navChain[] = (int)$chain['ID'];
+                $navChainIds[] = (int)$chain['ID'];
+                if ($chain['CODE']) {
+                    $navChainCodes[] = $chain['CODE'];
+                }
             }
         }
 
@@ -435,8 +458,10 @@ class IndexerTest extends TestCase
         $this->assertSame(90, $data['CATALOG_STORE_AMOUNT_' . $stack['mainStore']['ID']]);
         $this->assertSame(45, $data['CATALOG_STORE_AMOUNT_' . $stack['secondaryStore']['ID']]);
         $this->assertSame(['sale', 'hit'], $data['PROPERTY_TAGS']);
-        $this->assertSame($navChain, $data['NAV_CHAIN']);
-        $this->assertSame($groups, $data['GROUPS']);
+        $this->assertSame($navChainIds, $data['NAV_CHAIN_IDS']);
+        $this->assertSame($groupIds, $data['GROUP_IDS']);
+        $this->assertSame($navChainCodes, $data['NAV_CHAIN_CODES']);
+        $this->assertSame($groupCodes, $data['GROUP_CODES']);
 
         $stack['data'] = $data;
         return $stack;
@@ -455,14 +480,14 @@ class IndexerTest extends TestCase
         /** @var IndexMapping $mapping */
         $mapping = $stack['mapping'];
 
-        $existMapping = $indexer->getIndexMapping('test_products');
+        $existMapping = $indexer->getMapping('test_products');
         $this->assertInstanceOf(IndexMapping::class, $existMapping);
 
         for ($i = 0; $i < 2; $i++) {
-            $isSuccess = $indexer->putIndexMapping('test_products', $mapping);
+            $isSuccess = $indexer->putMapping('test_products', $mapping);
             $this->assertTrue($isSuccess);
 
-            $existMapping = $indexer->getIndexMapping('test_products');
+            $existMapping = $indexer->getMapping('test_products');
             $this->assertInstanceOf(IndexMapping::class, $existMapping);
 
             /** @var PropertyMapping $propertyMap */
@@ -475,5 +500,164 @@ class IndexerTest extends TestCase
         }
 
         return $stack;
+    }
+
+    public function testCanPutIndexData()
+    {
+        $iBlock = CIBlock::GetList(null, ['=TYPE' => 'elastic_test', '=CODE' => 'PRODUCTS'])->Fetch();
+        $this->assertNotEmpty($iBlock['ID']);
+
+        $indexer = new Indexer(self::getElasticClient());
+
+        $infoBlockMapping = $indexer->getInfoBlockMapping($iBlock['ID']);
+        $this->assertInstanceOf(IndexMapping::class, $infoBlockMapping);
+
+        $isSuccess = $indexer->putMapping('test_products', $infoBlockMapping);
+        $this->assertTrue($isSuccess);
+
+        $elasticMapping = $indexer->getMapping('test_products');
+        $this->assertInstanceOf(IndexMapping::class, $elasticMapping);
+
+        $rs = CIBlockElement::GetList(null, ['IBLOCK_ID' => $iBlock['ID']]);
+        while ($element = $rs->GetNextElement()) {
+            $this->assertInstanceOf(_CIBElement::class, $element);
+
+            $rawData = $indexer->getElementRawData($element);
+            $normalizedData = $indexer->normalizeData($elasticMapping, $rawData);
+
+            $isCreated = $indexer->put('test_products', $normalizedData['ID'], $normalizedData);
+            $this->assertTrue($isCreated);
+
+            $beforeUpdateData = $indexer->getElastic()->get(['index' => 'test_products', 'id' => $normalizedData['ID']]);
+
+            $isUpdated = $indexer->put('test_products', $normalizedData['ID'], $normalizedData);
+            $this->assertTrue($isUpdated);
+
+            $afterUpdateData = $indexer->getElastic()->get(['index' => 'test_products', 'id' => $normalizedData['ID']]);
+
+            $this->assertSame($beforeUpdateData['_source'], $afterUpdateData['_source']);
+            $this->assertSame($normalizedData, $beforeUpdateData['_source']);
+        }
+    }
+
+    /**
+     * @depends testCanGetInfoblockMapping
+     * @param array $stack
+     * @return array
+     */
+    public function testCanSearch(array $stack = [])
+    {
+        sleep(1);
+
+        /** @var Indexer $indexer */
+        $indexer = $stack['indexer'];
+
+        $phoneSection = CIBlockSection::GetList(null, ['IBLOCK_ID' => $stack['iBlockId'], 'CODE' => 'phone'])->Fetch();
+        $this->assertNotEmpty($phoneSection['ID']);
+
+        $basePriceId = $stack['basePriceType']['ID'];
+
+        $filters = [
+            [
+                'IBLOCK_ID' => $stack['iBlockId'],
+                'ACTIVE' => 'Y',
+                '>CATALOG_PRICE_' . $basePriceId => 0,
+                '>CATALOG_STORE_AMOUNT_' . $stack['mainStore']['ID'] => 0,
+                'IBLOCK_SECTION_ID' => $phoneSection['ID']
+            ],
+            [
+                '=IBLOCK_ID' => $stack['iBlockId'],
+                '!ACTIVE' => 'N',
+                '>=CATALOG_PRICE_' . $basePriceId => '10000',
+                '<=CATALOG_PRICE_' . $basePriceId => '20000',
+                'CATALOG_CURRENCY_' . $basePriceId => 'RUB',
+            ],
+            [
+                'IBLOCK_ID' => $stack['iBlockId'],
+                '=ACTIVE' => 'Y',
+                '<DATE_CREATE' => date('d.m.Y H:i:s', strtotime('+1 day'))
+            ],
+            [
+                '%NAME' => 'Phone',
+                '><PROPERTY_OLD_PRICE' => [10000, 20000],
+                'PROPERTY_TAGS' => ['new', 'hit']
+            ],
+            [
+                'SECTION_CODE' => 'mobile',
+                'INCLUDE_SUBSECTIONS' => 'Y'
+            ],
+            [
+                'SECTION_ID' => $phoneSection['ID'],
+                'INCLUDE_SUBSECTIONS' => $phoneSection['ID']
+            ]
+        ];
+
+        foreach ($filters as $filter) {
+            $response = $indexer->search('test_products', $filter);
+            $this->assertNotEmpty($response['hits']['hits']);
+
+            $elasticIds = array_map(function ($hit) {
+                return (int)$hit['_source']['ID'];
+            }, $response['hits']['hits']);
+
+            $elements = [];
+            $rs = CIBlockElement::GetList(null, $filter);
+            while ($element = $rs->GetNextElement()) {
+                $elements[] = $element;
+            }
+
+            $this->assertNotEmpty($elements);
+            $this->assertContainsOnlyInstancesOf(_CIBElement::class, $elements);
+
+            $bitrixIds = array_map(function (_CIBElement $element) {
+                return (int)$element->fields['ID'];
+            }, $elements);
+
+            $this->assertSame(sort($bitrixIds), sort($elasticIds));
+        }
+
+        return $stack;
+    }
+
+    public function testExceptOnWrongBetweenFilter()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', ['><PROPERTY_OLD_PRICE' => [20000]]);
+    }
+
+    public function testExceptOnNormalizeWrongFilterKey()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', ['' => 'WRONG KEY']);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testExceptOnPrepareWrongFilterKey()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $indexerRef = new ReflectionObject($indexer);
+        $prepareFilterQueryRef = $indexerRef->getMethod('prepareFilterQuery');
+        $prepareFilterQueryRef->setAccessible(true);
+        $this->expectException(InvalidArgumentException::class);
+        $prepareFilterQueryRef->invoke($indexer, ['' => 'WRONG KEY']);
+        $prepareFilterQueryRef->setAccessible(false);
+    }
+
+    public function testExceptOnWrongFilterOperator()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', ['@PROPERTY_COLOR' => 'WRONG_OPERATOR']);
+    }
+
+    public function testExceptOnFilterUndefinedProperty()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', ['PROPERTY_UNDEFINED' => '']);
     }
 }

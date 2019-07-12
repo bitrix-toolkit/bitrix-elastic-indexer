@@ -42,7 +42,10 @@ class PropertyMappingTest extends TestCase
         $propertyMap = PropertyMapping::fromBitrixProperty($bitrixProp);
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
         $this->assertEquals('integer', $propertyMap->get('type'));
+    }
 
+    public function testExceptOnInvalidBitrixProp()
+    {
         $bitrixProp = [];
         $this->expectException(InvalidArgumentException::class);
         PropertyMapping::fromBitrixProperty($bitrixProp);
@@ -158,7 +161,10 @@ class PropertyMappingTest extends TestCase
         $propertyMap = PropertyMapping::fromBitrixField('TAGS');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
         $this->assertEquals('keyword', $propertyMap->get('type'));
+    }
 
+    public function testExceptOnUndefinedField()
+    {
         $this->expectException(InvalidArgumentException::class);
         PropertyMapping::fromBitrixField('UNDEFINED_FIELD');
     }
@@ -203,14 +209,23 @@ class PropertyMappingTest extends TestCase
         $this->assertSame(false, $propertyMap->normalizeValue(false));
 
         $propertyMap = new PropertyMapping('date');
+        $this->assertSame(null, $propertyMap->normalizeValue(null));
+        $this->assertSame(null, $propertyMap->normalizeValue(false));
+        $this->assertSame(null, $propertyMap->normalizeValue(0));
+        $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame('2019-06-14 12:30:01', $propertyMap->normalizeValue('14.06.2019 12:30:01'));
+        $this->assertSame('2015-02-21', $propertyMap->normalizeValue('2015-02-21'));
+        $this->assertSame('2015-02-21', $propertyMap->normalizeValue('21.02.2015'));
         $dateTime = DateTime::createFromFormat('Y-m-d H:i:s', '2019-06-14 12:30:01');
         $this->assertSame('2019-06-14 12:30:01', $propertyMap->normalizeValue($dateTime));
         $bitrixDateTime = BitrixDateTime::createFromPhp($dateTime);
         $this->assertSame('2019-06-14 12:30:01', $propertyMap->normalizeValue($bitrixDateTime));
         $timestamp = $dateTime->getTimestamp();
         $this->assertSame('2019-06-14 12:30:01', $propertyMap->normalizeValue($timestamp));
+    }
 
+    public function testExceptOnTryAliasNormalize()
+    {
         $propertyMap = new PropertyMapping('alias', ['path' => 'another_prop']);
         $this->expectException(InvalidArgumentException::class);
         $propertyMap->normalizeValue('some value');

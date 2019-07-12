@@ -24,11 +24,13 @@ class PropertyMapping implements JsonSerializable
         'ACTIVE' => ['boolean'],
         'DETAIL_PAGE_URL' => ['keyword'],
         'LIST_PAGE_URL' => ['keyword'],
-        'TIMESTAMP_X' => ['date'],
-        'DATE_CREATE' => ['date'],
+        'TIMESTAMP_X' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
+        'DATE_CREATE' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
         'IBLOCK_SECTION_ID' => ['integer'],
-        'ACTIVE_FROM' => ['date'],
-        'ACTIVE_TO' => ['date'],
+        'SECTION_ID' => ['alias', ['path' => 'IBLOCK_SECTION_ID']],
+        'SECTION_CODE' => ['keyword'],
+        'ACTIVE_FROM' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
+        'ACTIVE_TO' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
         'SORT' => ['integer'],
         'PREVIEW_PICTURE' => ['integer'],
         'PREVIEW_TEXT' => ['text'],
@@ -69,6 +71,7 @@ class PropertyMapping implements JsonSerializable
 
         if ($bitrixPropertyType === 'S' && $bitrixUserType === 'DateTime') {
             $indexType = 'date';
+            $parameters = ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd'];
         } elseif ($bitrixPropertyType === 'N') {
             $indexType = 'float';
         } elseif ($bitrixPropertyType === 'E' || $bitrixPropertyType === 'F') {
@@ -77,7 +80,7 @@ class PropertyMapping implements JsonSerializable
             $indexType = 'keyword';
         }
 
-        return new self($indexType);
+        return new self($indexType, isset($parameters) ? $parameters : []);
     }
 
     /**
@@ -121,7 +124,15 @@ class PropertyMapping implements JsonSerializable
                 return $value && $value !== 'N';
             },
             'date' => function ($value) {
+                if (empty($value)) {
+                    return null;
+                }
+
                 $format = 'Y-m-d H:i:s';
+                if (is_string($value) && preg_match('/^\d{2,4}[-.]\d{2}[-.]\d{2,4}$/uis', $value)) {
+                    $format = 'Y-m-d';
+                }
+
                 if ($value instanceof BitrixDateTime) {
                     return $value->format($format);
                 } elseif ($value instanceof DateTime) {

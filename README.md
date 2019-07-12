@@ -39,24 +39,44 @@ $infoBlockMapping = $indexer->getInfoBlockMapping($iBlockId);
 изменяться не будут, чтобы избежать ошибок.
 
 ```php
-$indexer->putIndexMapping('goods', $infoBlockMapping);
+$indexer->putMapping('goods', $infoBlockMapping);
 ```
 
 Получаем текущую карту индекса из Elasticsearch.
 
 ```php
-$elasticMapping = $indexer->getIndexMapping('goods');
+$elasticMapping = $indexer->getMapping('goods');
 ```
 
 Получаем сырые данные индекса для элемента.
 
 ```php
 /** @var _CIBElement $element */
-$rawData = $indexer->getElementIndexData($element);
+$rawData = $indexer->getElementRawData($element);
 ```
 
 Нормализуем сырые данные индекса в соответствии с картой индекса Elasticsearch.
 
 ```php
-$data = $indexer->normalizeData($elasticMapping, $rawData);
+$normalizedData = $indexer->normalizeData($elasticMapping, $rawData);
+```
+
+Сохраняем данные в индексе Elasticsearch.
+
+```php
+$indexer->put('goods', $normalizedData);
+```
+
+Ищем по индексу используя фильтры в формате похожем на формат Bitrix.
+
+```php
+$response = $indexer->search('goods', [
+    'IBLOCK_ID' => 1,
+    'SECTION_CODE' => 'mobile',
+    'INCLUDE_SUBSECTIONS' => 'Y',
+    'ACTIVE' => 'Y',
+    '>CATALOG_PRICE_1' => 0,
+    '>CATALOG_STORE_AMOUNT_1' => 0,
+    'PROPERTY_TAGS' => ['hit', 'sale']
+]);
 ```
