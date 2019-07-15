@@ -79,3 +79,12 @@ $response = $indexer->search('goods', [
     'PROPERTY_TAGS' => ['hit', 'sale']
 ]);
 ```
+
+Для сортировки также используется формат похожий на формат Bitrix.
+
+```php
+$response = $indexer->search('goods', ['ACTIVE' => 'Y'], [
+    'CATALOG_PRICE_1' => 'ASC',
+    'ID' => 'DESC'
+]);
+```

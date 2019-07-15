@@ -316,8 +316,8 @@ class IndexerTest extends TestCase
 
         $this->assertEquals('integer', $mapping->getProperty('DETAIL_PICTURE')->get('type'));
         $this->assertEquals('float', $mapping->getProperty('PROPERTY_OLD_PRICE')->get('type'));
-        $this->assertEquals('keyword', $mapping->getProperty('PROPERTY_COLOR')->get('type'));
-        $this->assertEquals('keyword', $mapping->getProperty('PROPERTY_TAGS')->get('type'));
+        $this->assertEquals('text', $mapping->getProperty('PROPERTY_COLOR')->get('type'));
+        $this->assertEquals('text', $mapping->getProperty('PROPERTY_TAGS')->get('type'));
         $this->assertEquals('integer', $mapping->getProperty('CATALOG_STORE_AMOUNT_' . $mainStore['ID'])->get('type'));
         $this->assertEquals('integer', $mapping->getProperty('CATALOG_STORE_AMOUNT_' . $secondaryStore['ID'])->get('type'));
         $this->assertEquals('float', $mapping->getProperty('CATALOG_PRICE_' . $basePriceType['ID'])->get('type'));
@@ -600,7 +600,8 @@ class IndexerTest extends TestCase
             [
                 'SECTION_ID' => $phoneSection['ID'],
                 'INCLUDE_SUBSECTIONS' => 'N'
-            ]
+            ],
+            []
         ];
 
         foreach ($filters as $filter) {
@@ -624,7 +625,74 @@ class IndexerTest extends TestCase
                 return (int)$element->fields['ID'];
             }, $elements);
 
-            $this->assertSame(sort($bitrixIds), sort($elasticIds));
+            $this->assertSame(
+                array_slice(sort($bitrixIds), 0, 10),
+                array_slice(sort($elasticIds), 0, 10)
+            );
+        }
+
+        return $stack;
+    }
+
+    /**
+     * @depends testCanGetInfoblockMapping
+     * @param array $stack
+     * @return array
+     */
+    public function testCanSort(array $stack = [])
+    {
+        sleep(1);
+
+        /** @var Indexer $indexer */
+        $indexer = $stack['indexer'];
+
+        $mobileSection = CIBlockSection::GetList(null, ['IBLOCK_ID' => $stack['iBlockId'], 'CODE' => 'mobile'])->Fetch();
+        $this->assertNotEmpty($mobileSection['ID']);
+
+        $phoneSection = CIBlockSection::GetList(null, ['IBLOCK_ID' => $stack['iBlockId'], 'CODE' => 'phone'])->Fetch();
+        $this->assertNotEmpty($phoneSection['ID']);
+
+        $basePriceId = $stack['basePriceType']['ID'];
+        $mainStoreId = $stack['mainStore']['ID'];
+
+        $filter = ['IBLOCK_ID' => $stack['iBlockId'], 'ACTIVE' => 'Y'];
+
+        $sorts = [
+            ['SORT' => 'ASC', 'ID' => 'DESC'],
+            ['SORT' => 'DESC', 'ID' => 'DESC'],
+            ['CATALOG_PRICE_' . $basePriceId => 'ASC', 'ID' => 'DESC'],
+            ['CATALOG_PRICE_' . $basePriceId => 'DESC', 'ID' => 'DESC'],
+            ['CATALOG_STORE_AMOUNT_' . $mainStoreId => 'ASC', 'ID' => 'DESC'],
+            ['CATALOG_STORE_AMOUNT_' . $mainStoreId => 'DESC', 'ID' => 'DESC'],
+            ['PROPERTY_COLOR' => 'ASC', 'ID' => 'DESC'],
+            ['NAME' => 'ASC', 'ID' => 'DESC'],
+            ['NAME' => 'DESC', 'ID' => 'ASC'],
+            ['DATE_CREATE' => 'DESC', 'ID' => 'DESC'],
+            ['PROPERTY_OLD_PRICE' => 'DESC', 'ID' => 'DESC'],
+        ];
+
+        foreach ($sorts as $sort) {
+            $response = $indexer->search('test_products', $filter, $sort);
+            $this->assertNotEmpty($response['hits']['hits']);
+
+            $elasticIds = array_map(function ($hit) {
+                return (int)$hit['_source']['ID'];
+            }, $response['hits']['hits']);
+
+            $elements = [];
+            $rs = CIBlockElement::GetList($sort, $filter);
+            while ($element = $rs->GetNextElement()) {
+                $elements[] = $element;
+            }
+
+            $this->assertNotEmpty($elements);
+            $this->assertContainsOnlyInstancesOf(_CIBElement::class, $elements);
+
+            $bitrixIds = array_map(function (_CIBElement $element) {
+                return (int)$element->fields['ID'];
+            }, $elements);
+
+            $this->assertSame(array_slice($bitrixIds, 0, 10), array_slice($elasticIds, 0, 10));
         }
 
         return $stack;
@@ -670,5 +738,12 @@ class IndexerTest extends TestCase
         $indexer = new Indexer(self::getElasticClient());
         $this->expectException(InvalidArgumentException::class);
         $indexer->search('test_products', ['PROPERTY_UNDEFINED' => '']);
+    }
+
+    public function testExceptOnSortByUndefinedProperty()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', [], ['UNDEFINED_PROPERTY' => 'ASC']);
     }
 }

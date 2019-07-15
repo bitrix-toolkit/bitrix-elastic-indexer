@@ -13,6 +13,7 @@ use CModule;
 use CPrice;
 use Elasticsearch\Client;
 use InvalidArgumentException;
+use stdClass;
 
 class Indexer
 {
@@ -242,15 +243,20 @@ class Indexer
     /**
      * @param string $index
      * @param array $filter
+     * @param array $sort
      * @return array
      */
-    public function search(string $index, array $filter)
+    public function search(string $index, array $filter, array $sort = ['SORT' => 'ASC', 'ID' => 'DESC'])
     {
         $mapping = $this->getMapping($index);
         $filter = $this->prefabFilter($filter);
         $filter = $this->normalizeFilter($mapping, $filter);
         $query = $this->prepareFilterQuery($filter);
-        return $this->getElastic()->search(['index' => $index, 'body' => ['query' => $query]]);
+
+        $params = ['index' => $index, 'body' => ['query' => $query]];
+        $params = array_merge($params, $this->normalizeSort($mapping, $sort));
+
+        return $this->getElastic()->search($params);
     }
 
     /**
@@ -342,6 +348,30 @@ class Indexer
     }
 
     /**
+     * @param IndexMapping $mapping
+     * @param array $sort
+     * @return array
+     */
+    private function normalizeSort(IndexMapping $mapping, array $sort)
+    {
+        $elasticSort = [];
+        foreach ($sort as $property => $dir) {
+            if (!$mapping->getProperties()->offsetExists($property)) {
+                throw new InvalidArgumentException("$property не найден в карте индекса для сортировки.");
+            }
+
+            $propMap = $mapping->getProperty($property);
+            if (isset($propMap->getData()['fields']['raw'])) {
+                $elasticSort[] = $property . '.raw:' . strtolower($dir);
+            } else {
+                $elasticSort[] = $property . ':' . strtolower($dir);
+            }
+        }
+
+        return $elasticSort ? ['sort' => implode(',', $elasticSort)] : [];
+    }
+
+    /**
      * @param array $filter
      * @return array
      */
@@ -361,7 +391,7 @@ class Indexer
                 return ['must_not' => [[$query => [$k => $v]]]];
             },
             '%' => function ($k, $v) {
-                return ['must' => [['match_phrase' => [$k => $v]]]];
+                return ['must' => [['match' => [$k => $v]]]];
             },
             '>' => function ($k, $v) {
                 return ['must' => [['range' => [$k => ['gt' => $v]]]]];
@@ -401,6 +431,6 @@ class Indexer
             $terms = array_merge_recursive($terms, $entry);
         }
 
-        return ['bool' => $terms];
+        return $terms ? ['bool' => $terms] : ['match_all' => new stdClass()];
     }
 }
