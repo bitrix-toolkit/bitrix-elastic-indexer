@@ -552,6 +552,9 @@ class IndexerTest extends TestCase
         /** @var Indexer $indexer */
         $indexer = $stack['indexer'];
 
+        $mobileSection = CIBlockSection::GetList(null, ['IBLOCK_ID' => $stack['iBlockId'], 'CODE' => 'mobile'])->Fetch();
+        $this->assertNotEmpty($mobileSection['ID']);
+
         $phoneSection = CIBlockSection::GetList(null, ['IBLOCK_ID' => $stack['iBlockId'], 'CODE' => 'phone'])->Fetch();
         $this->assertNotEmpty($phoneSection['ID']);
 
@@ -587,8 +590,16 @@ class IndexerTest extends TestCase
                 'INCLUDE_SUBSECTIONS' => 'Y'
             ],
             [
+                'SECTION_CODE' => 'phone',
+                'INCLUDE_SUBSECTIONS' => 'N'
+            ],
+            [
+                'SECTION_ID' => $mobileSection['ID'],
+                'INCLUDE_SUBSECTIONS' => 'Y'
+            ],
+            [
                 'SECTION_ID' => $phoneSection['ID'],
-                'INCLUDE_SUBSECTIONS' => $phoneSection['ID']
+                'INCLUDE_SUBSECTIONS' => 'N'
             ]
         ];
 
