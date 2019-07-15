@@ -698,6 +698,39 @@ class IndexerTest extends TestCase
         return $stack;
     }
 
+    /**
+     * @depends testCanGetInfoblockMapping
+     * @param array $stack
+     * @return array
+     */
+    public function testCanPaginate(array $stack = [])
+    {
+        sleep(1);
+
+        /** @var Indexer $indexer */
+        $indexer = $stack['indexer'];
+
+        $getIds = function ($hit) {
+            return (int)$hit['_source']['ID'];
+        };
+
+        $response = $indexer->search('test_products', [], ['ID' => 'DESC'], ['size' => 20]);
+        $this->assertNotEmpty($response['hits']['hits']);
+        $all = array_map($getIds, $response['hits']['hits']);
+
+        $response = $indexer->search('test_products', [], ['ID' => 'DESC'], ['size' => 10]);
+        $this->assertNotEmpty($response['hits']['hits']);
+        $page1 = array_map($getIds, $response['hits']['hits']);
+
+        $response = $indexer->search('test_products', [], ['ID' => 'DESC'], ['from' => 10, 'size' => 10]);
+        $this->assertNotEmpty($response['hits']['hits']);
+        $page2 = array_map($getIds, $response['hits']['hits']);
+
+        $this->assertSame($all, array_merge($page1, $page2));
+
+        return $stack;
+    }
+
     public function testExceptOnWrongBetweenFilter()
     {
         $indexer = new Indexer(self::getElasticClient());

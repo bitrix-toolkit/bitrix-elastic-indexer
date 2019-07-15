@@ -88,3 +88,12 @@ $response = $indexer->search('goods', ['ACTIVE' => 'Y'], [
     'ID' => 'DESC'
 ]);
 ```
+
+Пагинацию и другие параметры запроса можно указать в последнем аргументе метода `search`.
+
+```php
+$response = $indexer->search('goods', ['ACTIVE' => 'Y'], ['ID' => 'ASC'], [
+    'from' => 40,
+    'size' => 20
+]);
+```
