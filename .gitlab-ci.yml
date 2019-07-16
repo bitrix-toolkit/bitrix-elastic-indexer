@@ -1,76 +1,78 @@
-image: docker:stable
-
-variables:
-  DOCKER_HOST: tcp://docker:2375/
-  DOCKER_DRIVER: overlay2
+stages:
+  - test
 
 services:
-  - docker:dind
+  - mysql:5.7
+  - name: elasticsearch:7.2.0
+    command: ["bin/elasticsearch", "-Ediscovery.type=single-node"]
+
+variables:
+  MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+  MYSQL_HOST: mysql
+  MYSQL_DATABASE: bitrix
+  MYSQL_USER: bitrix
+  MYSQL_PASSWORD: bitrix
+  ELASTICSEARCH_HOSTS: http://elasticsearch:9200
 
 before_script:
-  - docker run --name elasticsearch -td
-    -e discovery.type=single-node
-    elasticsearch:7.2.0
-  - docker run --name mysql -td
-    -e MYSQL_RANDOM_ROOT_PASSWORD=yes
-    -e MYSQL_DATABASE=bitrix
-    -e MYSQL_USER=user
-    -e MYSQL_PASSWORD=password
-    mysql:5.7
+  - apt-get update -yqq && apt-get install -yqq zip unzip
+  - docker-php-ext-install mysqli
+  - curl https://getcomposer.org/installer | php --
+  - php composer.phar install --no-interaction
+  - echo 'short_open_tag=1' >> $PHP_INI_DIR/php.ini
+  - echo 'mbstring.func_overload=2' >> $PHP_INI_DIR/php.ini
 
 PHP 7.1:
-  script:
-    - docker run --name bitrix -td
-      --link mysql
-      --link elasticsearch
-      -v $(pwd):/app/
-      -w /app/
-      -e php.short_open_tag=1
-      -e php.mbstring.func_overload=2
-      -e php.display_errors=1
-      -e MYSQL_HOST=mysql
-      -e MYSQL_DATABASE=bitrix
-      -e MYSQL_USER=user
-      -e MYSQL_PASSWORD=password
-      -e ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
-      webdevops/php-dev:7.1
-    - docker exec -i -w /app/ bitrix composer install -n --prefer-dist
-    - docker exec -i -w /app/ bitrix vendor/bin/phpunit --colors=never --coverage-text --whitelist src/
+  stage: test
+  image: php:7.1
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text
 
 PHP 7.2:
-  script:
-    - docker run --name bitrix -td
-      --link mysql
-      --link elasticsearch
-      -v $(pwd):/app/
-      -w /app/
-      -e php.short_open_tag=1
-      -e php.mbstring.func_overload=2
-      -e php.display_errors=1
-      -e MYSQL_HOST=mysql
-      -e MYSQL_DATABASE=bitrix
-      -e MYSQL_USER=user
-      -e MYSQL_PASSWORD=password
-      -e ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
-      webdevops/php-dev:7.2
-    - docker exec -i -w /app/ bitrix composer install -n --prefer-dist
-    - docker exec -i -w /app/ bitrix vendor/bin/phpunit --colors=never --coverage-text --whitelist src/
+  stage: test
+  image: php:7.2
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text
 
 PHP 7.3:
+  stage: test
+  image: php:7.3
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+
+Code Quality:
+  stage: test
+  image: docker:stable
+  services:
+    - docker:dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - docker run -i --rm -v $(pwd):/app/ -w /app/ webdevops/php-dev:7.2 composer install --no-interaction
   script:
-    - docker run --name bitrix -td
-      --link mysql
-      --link elasticsearch
-      -v $(pwd):/app/
-      -w /app/
-      -e php.short_open_tag=1
-      -e php.mbstring.func_overload=2
-      -e php.display_errors=1
-      -e MYSQL_HOST=mysql
-      -e MYSQL_DATABASE=bitrix
-      -e MYSQL_USER=user
-      -e MYSQL_PASSWORD=password
-      -e ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
-      webdevops/php-dev:7.3
-    - docker exec -i -w /app/ bitrix composer install -n --prefer-dist
-    - docker exec -i -w /app/ bitrix vendor/bin/phpunit --colors=never --coverage-text --whitelist src/
+    - docker run -i --rm -v $(pwd):/app/ -w /app/ nunomaduro/phpinsights --no-interaction -vv > phpinsights.txt
+  after_script:
+    - RED=50
+    - YELLOW=80
+    - docker run -id --name anybadge -v $(pwd):/app/ -w /app/ python:3
+    - docker exec anybadge pip install anybadge
+    - CODE=$(grep -oE "\\[CODE\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
+    - COMPLEXITY=$(grep -oE "\\[COMPLEXITY\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
+    - ARCHITECTURE=$(grep -oE "\\[ARCHITECTURE\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
+    - STYLE=$(grep -oE "\\[MISC\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
+    - COLOR=$(if [ $CODE -lt $RED ]; then echo red; elif [ $CODE -lt $YELLOW ]; then echo yellow; else echo green; fi)
+    - docker exec anybadge anybadge -l code -v " $CODE% " -c $COLOR -f badge_code.svg
+    - COLOR=$(if [ $COMPLEXITY -lt $RED ]; then echo red; elif [ $COMPLEXITY -lt $YELLOW ]; then echo yellow; else echo green; fi)
+    - docker exec anybadge anybadge -l complexity -v " $COMPLEXITY% " -c $COLOR -f badge_complexity.svg
+    - COLOR=$(if [ $ARCHITECTURE -lt $RED ]; then echo red; elif [ $ARCHITECTURE -lt $YELLOW ]; then echo yellow; else echo green; fi)
+    - docker exec anybadge anybadge -l architecture -v " $ARCHITECTURE% " -c $COLOR -f badge_architecture.svg
+    - COLOR=$(if [ $STYLE -lt $RED ]; then echo red; elif [ $STYLE -lt $YELLOW ]; then echo yellow; else echo green; fi)
+    - docker exec anybadge anybadge -l style -v " $STYLE% " -c $COLOR -f badge_style.svg
+    - docker stop anybadge && docker rm anybadge
+    - cat phpinsights.txt
+  artifacts:
+    paths:
+      - phpinsights.txt
+      - badge_code.svg
+      - badge_complexity.svg
+      - badge_architecture.svg
+      - badge_style.svg
+    when: always

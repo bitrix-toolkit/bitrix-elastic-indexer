@@ -2,6 +2,10 @@
 
 [![pipeline status](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/badges/master/pipeline.svg)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/pipelines)
 [![coverage report](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/badges/master/coverage.svg)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs)
+[![code](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/badge_code.svg?job=Code+Quality)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/phpinsights.txt?job=Code+Quality)
+[![complexity](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/badge_complexity.svg?job=Code+Quality)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/phpinsights.txt?job=Code+Quality)
+[![architecture](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/badge_architecture.svg?job=Code+Quality)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/phpinsights.txt?job=Code+Quality)
+[![style](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/badge_style.svg?job=Code+Quality)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs/artifacts/master/raw/phpinsights.txt?job=Code+Quality)
 
 Хелпер для индексации данных инфоблока Bitrix в Elasticsearch.
 
