@@ -9,7 +9,7 @@
 ## Установка
 
 ```bash
-composer require sheerockoff/bitrix-elastic-indexer:dev-master
+composer require sheerockoff/bitrix-elastic-indexer
 ```
 
 ## Быстрый старт
