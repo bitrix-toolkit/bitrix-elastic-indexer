@@ -185,7 +185,7 @@ class PropertyMappingTest extends TestCase
         $propertyMap = new PropertyMapping('text');
         $this->assertSame('100', $propertyMap->normalizeValue(100));
 
-        $propertyMap = new PropertyMapping('text');
+        $propertyMap = new PropertyMapping('keyword');
         $this->assertSame('200', $propertyMap->normalizeValue(200));
 
         $propertyMap = new PropertyMapping('integer');

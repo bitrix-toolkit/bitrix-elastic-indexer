@@ -203,6 +203,11 @@ class Indexer
             }
 
             $rawValue = $data[$key] ?: null;
+
+            if (is_array($rawValue) && array_key_exists('TEXT', $rawValue)) {
+                $rawValue = $rawValue['TEXT'];
+            }
+
             if (is_array($rawValue)) {
                 $value = array_map(function ($v) use ($propertyMapping) {
                     return $propertyMapping->normalizeValue($v);

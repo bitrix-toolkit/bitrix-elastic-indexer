@@ -445,11 +445,17 @@ class IndexerTest extends TestCase
             }
         }
 
+        $stack['rawData']['PREVIEW_TEXT'] = [
+            'TYPE' => 'HTML',
+            'TEXT' => 'Some text'
+        ];
+
         $data = $indexer->normalizeData($stack['mapping'], $stack['rawData']);
         $this->assertIsArray($data);
         $this->assertSame((int)$element->fields['ID'], $data['ID']);
         $this->assertSame((int)$element->fields['IBLOCK_ID'], $data['IBLOCK_ID']);
         $this->assertSame((int)$element->fields['PREVIEW_PICTURE'], $data['PREVIEW_PICTURE']);
+        $this->assertSame('Some text', $data['PREVIEW_TEXT']);
         $this->assertSame((int)$element->fields['DETAIL_PICTURE'], $data['DETAIL_PICTURE']);
         $this->assertSame('Notebook 15', $data['NAME']);
         $this->assertSame(22999.00, $data['PROPERTY_OLD_PRICE']);
