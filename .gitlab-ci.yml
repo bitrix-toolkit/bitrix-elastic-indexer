@@ -15,12 +15,12 @@ variables:
   ELASTICSEARCH_HOSTS: http://elasticsearch:9200
 
 before_script:
-  - apt-get update -yqq && apt-get install -yqq zip unzip
+  - apt-get update -yqq && apt-get install -yqq git zip unzip
   - docker-php-ext-install mysqli
   - pecl install xdebug
   - docker-php-ext-enable xdebug
-  - curl https://getcomposer.org/installer | php --
-  - php composer.phar install --no-interaction
+  - curl -L https://getcomposer.org/installer | php --
+  - php composer.phar install --no-interaction --prefer-dist
   - echo 'short_open_tag=1' >> $PHP_INI_DIR/php.ini
   - echo 'mbstring.func_overload=2' >> $PHP_INI_DIR/php.ini
 
@@ -40,5 +40,5 @@ PHP 7.3:
   script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover=coverage.clover
 
 after_script:
-  - wget https://scrutinizer-ci.com/ocular.phar
+  - curl -L https://scrutinizer-ci.com/ocular.phar --output ocular.phar
   - php ocular.phar code-coverage:upload --format=php-clover coverage.clover
