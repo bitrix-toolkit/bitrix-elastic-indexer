@@ -21,20 +21,26 @@ before_script:
   - docker-php-ext-enable xdebug
   - curl -L https://getcomposer.org/installer | php --
   - php composer.phar install --no-interaction --prefer-dist
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 --output code-climate
+  - chmod +x code-climate
+  - ./code-climate before-build
   - echo 'short_open_tag=1' >> $PHP_INI_DIR/php.ini
   - echo 'mbstring.func_overload=2' >> $PHP_INI_DIR/php.ini
 
 PHP 7.1:
   stage: test
   image: php:7.1
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
 
 PHP 7.2:
   stage: test
   image: php:7.2
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
 
 PHP 7.3:
   stage: test
   image: php:7.3
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
+
+after_script:
+  - ./code-climate after-build -t clover

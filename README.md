@@ -2,7 +2,7 @@
 
 [![pipeline status](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/badges/master/pipeline.svg)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/pipelines)
 [![coverage report](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/badges/master/coverage.svg)](https://gitlab.com/sheerockoff/bitrix-elastic-indexer/-/jobs)
-[![Scrutinizer Code Quality](https://scrutinizer-ci.com/g/sheerockoff/bitrix-elastic-indexer/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/sheerockoff/bitrix-elastic-indexer/?branch=master)
+[![Maintainability](https://img.shields.io/codeclimate/maintainability-percentage/sheerockoff/bitrix-elastic-indexer.svg)](https://codeclimate.com/github/sheerockoff/bitrix-elastic-indexer/maintainability)
 
 Хелпер для индексации данных инфоблока Bitrix в Elasticsearch.
 
