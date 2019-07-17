@@ -41,4 +41,4 @@ PHP 7.3:
 
 after_script:
   - curl -L https://scrutinizer-ci.com/ocular.phar --output ocular.phar
-  - php ocular.phar code-coverage:upload --format=php-clover coverage.clover
+  - php ocular.phar code-coverage:upload --repository g/sheerockoff/bitrix-elastic-indexer --format=php-clover coverage.clover
