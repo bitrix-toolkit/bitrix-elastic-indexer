@@ -27,54 +27,18 @@ before_script:
 PHP 7.1:
   stage: test
   image: php:7.1
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover=coverage.clover
 
 PHP 7.2:
   stage: test
   image: php:7.2
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover=coverage.clover
 
 PHP 7.3:
   stage: test
   image: php:7.3
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover=coverage.clover
 
-Code Quality:
-  stage: test
-  image: docker:stable
-  services:
-    - docker:dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_DRIVER: overlay2
-  before_script:
-    - docker run -i --rm -v $(pwd):/app/ -w /app/ webdevops/php-dev:7.2 composer install --no-interaction
-  script:
-    - docker run -i --rm -v $(pwd):/app/ -w /app/ nunomaduro/phpinsights --no-interaction -vv > phpinsights.txt
-  after_script:
-    - RED=50
-    - YELLOW=80
-    - docker run -id --name anybadge -v $(pwd):/app/ -w /app/ python:3
-    - docker exec anybadge pip install anybadge
-    - CODE=$(grep -oE "\\[CODE\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
-    - COMPLEXITY=$(grep -oE "\\[COMPLEXITY\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
-    - ARCHITECTURE=$(grep -oE "\\[ARCHITECTURE\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
-    - STYLE=$(grep -oE "\\[MISC\\] [0-9]+" phpinsights.txt | grep -oE "[0-9]+")
-    - COLOR=$(if [ $CODE -lt $RED ]; then echo red; elif [ $CODE -lt $YELLOW ]; then echo yellow; else echo green; fi)
-    - docker exec anybadge anybadge -l code -v " $CODE% " -c $COLOR -f badge_code.svg
-    - COLOR=$(if [ $COMPLEXITY -lt $RED ]; then echo red; elif [ $COMPLEXITY -lt $YELLOW ]; then echo yellow; else echo green; fi)
-    - docker exec anybadge anybadge -l complexity -v " $COMPLEXITY% " -c $COLOR -f badge_complexity.svg
-    - COLOR=$(if [ $ARCHITECTURE -lt $RED ]; then echo red; elif [ $ARCHITECTURE -lt $YELLOW ]; then echo yellow; else echo green; fi)
-    - docker exec anybadge anybadge -l architecture -v " $ARCHITECTURE% " -c $COLOR -f badge_architecture.svg
-    - COLOR=$(if [ $STYLE -lt $RED ]; then echo red; elif [ $STYLE -lt $YELLOW ]; then echo yellow; else echo green; fi)
-    - docker exec anybadge anybadge -l style -v " $STYLE% " -c $COLOR -f badge_style.svg
-    - docker stop anybadge && docker rm anybadge
-    - cat phpinsights.txt
-  artifacts:
-    paths:
-      - phpinsights.txt
-      - badge_code.svg
-      - badge_complexity.svg
-      - badge_architecture.svg
-      - badge_style.svg
-    when: always
+after_script:
+  - wget https://scrutinizer-ci.com/ocular.phar
+  - php ocular.phar code-coverage:upload --format=php-clover coverage.clover
