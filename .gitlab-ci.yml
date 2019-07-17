@@ -27,18 +27,14 @@ before_script:
 PHP 7.1:
   stage: test
   image: php:7.1
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover=coverage.clover
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text
 
 PHP 7.2:
   stage: test
   image: php:7.2
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover=coverage.clover
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text
 
 PHP 7.3:
   stage: test
   image: php:7.3
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover=coverage.clover
-
-after_script:
-  - curl -L https://scrutinizer-ci.com/ocular.phar --output ocular.phar
-  - php ocular.phar code-coverage:upload --repository g/sheerockoff/bitrix-elastic-indexer --format=php-clover coverage.clover
+  script: vendor/bin/phpunit --whitelist src/ --coverage-text
