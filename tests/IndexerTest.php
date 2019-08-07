@@ -13,6 +13,7 @@ use CFile;
 use CIBlock;
 use CIBlockElement;
 use CIBlockProperty;
+use CIBlockPropertyEnum;
 use CIBlockSection;
 use CIBlockType;
 use CPrice;
@@ -316,8 +317,9 @@ class IndexerTest extends TestCase
 
         $this->assertEquals('integer', $mapping->getProperty('DETAIL_PICTURE')->get('type'));
         $this->assertEquals('float', $mapping->getProperty('PROPERTY_OLD_PRICE')->get('type'));
-        $this->assertEquals('text', $mapping->getProperty('PROPERTY_COLOR')->get('type'));
-        $this->assertEquals('text', $mapping->getProperty('PROPERTY_TAGS')->get('type'));
+        $this->assertEquals('integer', $mapping->getProperty('PROPERTY_COLOR')->get('type'));
+        $this->assertEquals('keyword', $mapping->getProperty('PROPERTY_COLOR_VALUE')->get('type'));
+        $this->assertEquals('keyword', $mapping->getProperty('PROPERTY_TAGS')->get('type'));
         $this->assertEquals('integer', $mapping->getProperty('CATALOG_STORE_AMOUNT_' . $mainStore['ID'])->get('type'));
         $this->assertEquals('integer', $mapping->getProperty('CATALOG_STORE_AMOUNT_' . $secondaryStore['ID'])->get('type'));
         $this->assertEquals('float', $mapping->getProperty('CATALOG_PRICE_' . $basePriceType['ID'])->get('type'));
@@ -398,7 +400,7 @@ class IndexerTest extends TestCase
         $this->assertEquals('Notebook 15', $data['NAME']);
         $this->assertEquals(22999, $data['PROPERTY_OLD_PRICE']);
         $this->assertEquals(19999, $data['CATALOG_PRICE_' . $stack['basePriceType']['ID']]);
-        $this->assertEquals('Black', $data['PROPERTY_COLOR']);
+        $this->assertEquals('Black', $data['PROPERTY_COLOR_VALUE']);
         $this->assertEquals(90, $data['CATALOG_STORE_AMOUNT_' . $stack['mainStore']['ID']]);
         $this->assertEquals(45, $data['CATALOG_STORE_AMOUNT_' . $stack['secondaryStore']['ID']]);
         $this->assertEquals(['sale', 'hit'], $data['PROPERTY_TAGS']);
@@ -460,7 +462,7 @@ class IndexerTest extends TestCase
         $this->assertSame('Notebook 15', $data['NAME']);
         $this->assertSame(22999.00, $data['PROPERTY_OLD_PRICE']);
         $this->assertSame(19999.00, $data['CATALOG_PRICE_' . $stack['basePriceType']['ID']]);
-        $this->assertSame('Black', $data['PROPERTY_COLOR']);
+        $this->assertSame('Black', $data['PROPERTY_COLOR_VALUE']);
         $this->assertSame(90, $data['CATALOG_STORE_AMOUNT_' . $stack['mainStore']['ID']]);
         $this->assertSame(45, $data['CATALOG_STORE_AMOUNT_' . $stack['secondaryStore']['ID']]);
         $this->assertSame(['sale', 'hit'], $data['PROPERTY_TAGS']);
@@ -592,6 +594,18 @@ class IndexerTest extends TestCase
                 'PROPERTY_TAGS' => ['new', 'hit']
             ],
             [
+                'PROPERTY_COLOR_VALUE' => 'Silver',
+            ],
+            [
+                'PROPERTY_COLOR' => (function () {
+                    $enum = CIBlockPropertyEnum::GetList(null, [
+                        'PROPERTY_CODE' => 'COLOR', 'VALUE' => 'Silver'
+                    ])->Fetch();
+                    $this->assertNotEmpty($enum['ID']);
+                    return $enum['ID'];
+                })()
+            ],
+            [
                 'SECTION_CODE' => 'mobile',
                 'INCLUDE_SUBSECTIONS' => 'Y'
             ],
@@ -612,7 +626,7 @@ class IndexerTest extends TestCase
 
         foreach ($filters as $filter) {
             $response = $indexer->search('test_products', $filter);
-            $this->assertNotEmpty($response['hits']['hits']);
+            //$this->assertNotEmpty($response['hits']['hits'], 'No elasticsearch hits for ' . json_encode($filter));
 
             $elasticIds = array_map(function ($hit) {
                 return (int)$hit['_source']['ID'];
@@ -624,7 +638,7 @@ class IndexerTest extends TestCase
                 $elements[] = $element;
             }
 
-            $this->assertNotEmpty($elements);
+            $this->assertNotEmpty($elements, 'No infoblock hits for ' . json_encode($filter));
             $this->assertContainsOnlyInstancesOf(_CIBElement::class, $elements);
 
             $bitrixIds = array_map(function (_CIBElement $element) {
