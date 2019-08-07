@@ -21,7 +21,7 @@ class PropertyMappingTest extends TestCase
         $bitrixProp = ['PROPERTY_TYPE' => 'S', 'USER_TYPE' => false];
         $propertyMap = PropertyMapping::fromBitrixProperty($bitrixProp);
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $bitrixProp = ['PROPERTY_TYPE' => 'N', 'USER_TYPE' => false];
         $propertyMap = PropertyMapping::fromBitrixProperty($bitrixProp);
@@ -31,7 +31,7 @@ class PropertyMappingTest extends TestCase
         $bitrixProp = ['PROPERTY_TYPE' => 'L', 'USER_TYPE' => false];
         $propertyMap = PropertyMapping::fromBitrixProperty($bitrixProp);
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $bitrixProp = ['PROPERTY_TYPE' => 'E', 'USER_TYPE' => false];
         $propertyMap = PropertyMapping::fromBitrixProperty($bitrixProp);
@@ -55,11 +55,11 @@ class PropertyMappingTest extends TestCase
     {
         $propertyMap = PropertyMapping::fromBitrixField('LID');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('IBLOCK_TYPE_ID');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('IBLOCK_ID');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
@@ -67,11 +67,11 @@ class PropertyMappingTest extends TestCase
 
         $propertyMap = PropertyMapping::fromBitrixField('IBLOCK_CODE');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('IBLOCK_NAME');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('ID');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
@@ -79,7 +79,7 @@ class PropertyMappingTest extends TestCase
 
         $propertyMap = PropertyMapping::fromBitrixField('XML_ID');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('EXTERNAL_ID');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
@@ -88,11 +88,11 @@ class PropertyMappingTest extends TestCase
 
         $propertyMap = PropertyMapping::fromBitrixField('CODE');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('NAME');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('ACTIVE');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
@@ -100,11 +100,11 @@ class PropertyMappingTest extends TestCase
 
         $propertyMap = PropertyMapping::fromBitrixField('DETAIL_PAGE_URL');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('LIST_PAGE_URL');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('TIMESTAMP_X');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
@@ -136,11 +136,11 @@ class PropertyMappingTest extends TestCase
 
         $propertyMap = PropertyMapping::fromBitrixField('PREVIEW_TEXT');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('PREVIEW_TEXT_TYPE');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('DETAIL_PICTURE');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
@@ -148,19 +148,19 @@ class PropertyMappingTest extends TestCase
 
         $propertyMap = PropertyMapping::fromBitrixField('DETAIL_TEXT');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('DETAIL_TEXT_TYPE');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('SEARCHABLE_CONTENT');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
 
         $propertyMap = PropertyMapping::fromBitrixField('TAGS');
         $this->assertInstanceOf(PropertyMapping::class, $propertyMap);
-        $this->assertEquals('text', $propertyMap->get('type'));
+        $this->assertEquals('keyword', $propertyMap->get('type'));
     }
 
     public function testExceptOnUndefinedField()
@@ -176,8 +176,8 @@ class PropertyMappingTest extends TestCase
         $propertyMap->set('type', 'boolean');
         $this->assertEquals('boolean', $propertyMap->get('type'));
 
-        $propertyMap->getData()['type'] = 'text';
-        $this->assertEquals('text', $propertyMap->getData()['type']);
+        $propertyMap->getData()['type'] = 'keyword';
+        $this->assertEquals('keyword', $propertyMap->getData()['type']);
     }
 
     public function testCanNormalizeValue()

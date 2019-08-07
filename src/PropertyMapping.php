@@ -11,35 +11,35 @@ use JsonSerializable;
 class PropertyMapping implements JsonSerializable
 {
     public static $bitrixFieldTypesMap = [
-        'LID' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
-        'IBLOCK_TYPE_ID' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'LID' => ['keyword'],
+        'IBLOCK_TYPE_ID' => ['keyword'],
         'IBLOCK_ID' => ['integer'],
-        'IBLOCK_CODE' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
-        'IBLOCK_NAME' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'IBLOCK_CODE' => ['keyword'],
+        'IBLOCK_NAME' => ['keyword'],
         'ID' => ['integer'],
-        'XML_ID' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'XML_ID' => ['keyword'],
         'EXTERNAL_ID' => ['alias', ['path' => 'XML_ID']],
-        'CODE' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
-        'NAME' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'CODE' => ['keyword'],
+        'NAME' => ['keyword'],
         'ACTIVE' => ['boolean'],
-        'DETAIL_PAGE_URL' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
-        'LIST_PAGE_URL' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'DETAIL_PAGE_URL' => ['keyword'],
+        'LIST_PAGE_URL' => ['keyword'],
         'TIMESTAMP_X' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
         'DATE_CREATE' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
         'IBLOCK_SECTION_ID' => ['integer'],
         'SECTION_ID' => ['alias', ['path' => 'IBLOCK_SECTION_ID']],
-        'SECTION_CODE' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'SECTION_CODE' => ['keyword'],
         'ACTIVE_FROM' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
         'ACTIVE_TO' => ['date', ['format' => 'yyyy-MM-dd HH:mm:ss||yyyy-MM-dd']],
         'SORT' => ['integer'],
         'PREVIEW_PICTURE' => ['integer'],
-        'PREVIEW_TEXT' => ['text'],
-        'PREVIEW_TEXT_TYPE' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'PREVIEW_TEXT' => ['keyword'],
+        'PREVIEW_TEXT_TYPE' => ['keyword'],
         'DETAIL_PICTURE' => ['integer'],
-        'DETAIL_TEXT' => ['text'],
-        'DETAIL_TEXT_TYPE' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
-        'SEARCHABLE_CONTENT' => ['text'],
-        'TAGS' => ['text', ['fields' => ['raw' => ['type' => 'keyword']]]],
+        'DETAIL_TEXT' => ['keyword'],
+        'DETAIL_TEXT_TYPE' => ['keyword'],
+        'SEARCHABLE_CONTENT' => ['keyword'],
+        'TAGS' => ['keyword'],
     ];
     /**
      * @var ArrayObject
@@ -50,7 +50,7 @@ class PropertyMapping implements JsonSerializable
      * @param string $type
      * @param array $parameters
      */
-    public function __construct(string $type = 'text', array $parameters = [])
+    public function __construct(string $type = 'keyword', array $parameters = [])
     {
         $this->data = new ArrayObject($parameters);
         $this->data['type'] = $type;
@@ -77,8 +77,7 @@ class PropertyMapping implements JsonSerializable
         } elseif ($bitrixPropertyType === 'E' || $bitrixPropertyType === 'F') {
             $indexType = 'integer';
         } else {
-            $indexType = 'text';
-            $parameters = ['fields' => ['raw' => ['type' => 'keyword']]];
+            $indexType = 'keyword';
         }
 
         return new self($indexType, isset($parameters) ? $parameters : []);

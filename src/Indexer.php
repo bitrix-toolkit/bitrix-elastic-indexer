@@ -46,10 +46,22 @@ class Indexer
 
         $rs = CIBlockProperty::GetList(null, ['IBLOCK_ID' => $infoBlockId]);
         while ($property = $rs->Fetch()) {
-            $mapping->setProperty(
-                'PROPERTY_' . $property['CODE'],
-                PropertyMapping::fromBitrixProperty($property)
-            );
+            if ($property['PROPERTY_TYPE'] === 'L') {
+                $mapping->setProperty(
+                    'PROPERTY_' . $property['CODE'],
+                    new PropertyMapping('integer', ['fields' => ['enum' => ['type' => 'integer']]])
+                );
+
+                $mapping->setProperty(
+                    'PROPERTY_' . $property['CODE'] . '_VALUE',
+                    PropertyMapping::fromBitrixProperty($property)
+                );
+            } else {
+                $mapping->setProperty(
+                    'PROPERTY_' . $property['CODE'],
+                    PropertyMapping::fromBitrixProperty($property)
+                );
+            }
         }
 
         $mapping->setProperty('GROUP_IDS', new PropertyMapping('integer'));
@@ -142,7 +154,12 @@ class Indexer
         }
 
         foreach ($element->GetProperties() as $property) {
-            $data['PROPERTY_' . $property['CODE']] = $property['VALUE'];
+            if ($property['PROPERTY_TYPE'] === 'L') {
+                $data['PROPERTY_' . $property['CODE']] = $property['VALUE_ENUM_ID'];
+                $data['PROPERTY_' . $property['CODE'] . '_VALUE'] = $property['VALUE'];
+            } else {
+                $data['PROPERTY_' . $property['CODE']] = $property['VALUE'];
+            }
         }
 
         $groups = [];
@@ -368,8 +385,8 @@ class Indexer
             }
 
             $propMap = $mapping->getProperty($property);
-            if (isset($propMap->getData()['fields']['raw'])) {
-                $elasticSort[] = $property . '.raw:' . strtolower($dir);
+            if (isset($propMap->getData()['fields']['enum'])) {
+                $elasticSort[] = $property . '_VALUE:' . strtolower($dir);
             } else {
                 $elasticSort[] = $property . ':' . strtolower($dir);
             }
@@ -398,7 +415,7 @@ class Indexer
                 return ['must_not' => [[$query => [$k => $v]]]];
             },
             '%' => function ($k, $v) {
-                return ['must' => [['match' => [$k => $v]]]];
+                return ['must' => [['wildcard' => [$k => "*$v*"]]]];
             },
             '>' => function ($k, $v) {
                 return ['must' => [['range' => [$k => ['gt' => $v]]]]];
