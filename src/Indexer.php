@@ -53,13 +53,28 @@ class Indexer
                 );
 
                 $mapping->setProperty(
+                    'PROPERTY_' . $property['ID'],
+                    new PropertyMapping('alias', ['path' => 'PROPERTY_' . $property['CODE']])
+                );
+
+                $mapping->setProperty(
                     'PROPERTY_' . $property['CODE'] . '_VALUE',
                     PropertyMapping::fromBitrixProperty($property)
+                );
+
+                $mapping->setProperty(
+                    'PROPERTY_' . $property['ID'] . '_VALUE',
+                    new PropertyMapping('alias', ['path' => 'PROPERTY_' . $property['CODE'] . '_VALUE'])
                 );
             } else {
                 $mapping->setProperty(
                     'PROPERTY_' . $property['CODE'],
                     PropertyMapping::fromBitrixProperty($property)
+                );
+
+                $mapping->setProperty(
+                    'PROPERTY_' . $property['ID'],
+                    new PropertyMapping('alias', ['path' => 'PROPERTY_' . $property['CODE']])
                 );
             }
         }
@@ -355,6 +370,22 @@ class Indexer
 
             if (!$mapping->getProperties()->offsetExists($property)) {
                 throw new InvalidArgumentException("$property не найден в карте индекса.");
+            }
+
+            $isAlias = $mapping->getProperty($property)->get('type') === 'alias';
+            if ($isAlias) {
+                $aliasPath = $mapping->getProperty($property)->get('path');
+                if (!$aliasPath) {
+                    throw new InvalidArgumentException("В $property типа alias не указан path.");
+                }
+
+                if (!$mapping->getProperties()->offsetExists($aliasPath)) {
+                    throw new InvalidArgumentException(
+                        "$property типа alias указывает на $aliasPath, который не найден в карте индекса."
+                    );
+                }
+
+                $property = $aliasPath;
             }
 
             if (is_array($v)) {

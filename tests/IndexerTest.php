@@ -568,6 +568,10 @@ class IndexerTest extends TestCase
 
         $basePriceId = $stack['basePriceType']['ID'];
 
+        $silverColorEnum = CIBlockPropertyEnum::GetList(null, [
+            'PROPERTY_CODE' => 'COLOR', 'VALUE' => 'Silver'
+        ])->Fetch();
+
         $filters = [
             [
                 'IBLOCK_ID' => $stack['iBlockId'],
@@ -597,13 +601,13 @@ class IndexerTest extends TestCase
                 'PROPERTY_COLOR_VALUE' => 'Silver',
             ],
             [
-                'PROPERTY_COLOR' => (function () {
-                    $enum = CIBlockPropertyEnum::GetList(null, [
-                        'PROPERTY_CODE' => 'COLOR', 'VALUE' => 'Silver'
-                    ])->Fetch();
-                    $this->assertNotEmpty($enum['ID']);
-                    return $enum['ID'];
-                })()
+                'PROPERTY_COLOR' => $silverColorEnum['ID'],
+            ],
+            [
+                '=PROPERTY_' . $silverColorEnum['PROPERTY_ID'] => $silverColorEnum['ID'],
+            ],
+            [
+                'PROPERTY_' . $silverColorEnum['PROPERTY_ID'] . '_VALUE' => 'Silver',
             ],
             [
                 'SECTION_CODE' => 'mobile',
@@ -626,7 +630,7 @@ class IndexerTest extends TestCase
 
         foreach ($filters as $filter) {
             $response = $indexer->search('test_products', $filter);
-            //$this->assertNotEmpty($response['hits']['hits'], 'No elasticsearch hits for ' . json_encode($filter));
+            $this->assertNotEmpty($response['hits']['hits'], 'No elasticsearch hits for ' . json_encode($filter));
 
             $elasticIds = array_map(function ($hit) {
                 return (int)$hit['_source']['ID'];
@@ -763,6 +767,40 @@ class IndexerTest extends TestCase
         $indexer = new Indexer(self::getElasticClient());
         $this->expectException(InvalidArgumentException::class);
         $indexer->search('test_products', ['' => 'WRONG KEY']);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testExceptOnNormalizeAliasWithoutPathFilter()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $indexerRef = new ReflectionObject($indexer);
+        $normalizeFilterRef = $indexerRef->getMethod('normalizeFilter');
+
+        $mapping = new IndexMapping();
+        $mapping->setProperty('PROPERTY_ALIAS', new PropertyMapping('alias'));
+
+        $normalizeFilterRef->setAccessible(true);
+        $this->expectException(InvalidArgumentException::class);
+        $normalizeFilterRef->invoke($indexer, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
+    }
+
+    /**
+     * @throws ReflectionException
+     */
+    public function testExceptOnNormalizeAliasWithWrongPathFilter()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $indexerRef = new ReflectionObject($indexer);
+        $normalizeFilterRef = $indexerRef->getMethod('normalizeFilter');
+
+        $mapping = new IndexMapping();
+        $mapping->setProperty('PROPERTY_ALIAS', new PropertyMapping('alias', ['path' => 'PROPERTY_UNDEFINED']));
+
+        $normalizeFilterRef->setAccessible(true);
+        $this->expectException(InvalidArgumentException::class);
+        $normalizeFilterRef->invoke($indexer, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
     }
 
     /**
