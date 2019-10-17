@@ -25,20 +25,47 @@ before_script:
   - echo 'short_open_tag=1' >> $PHP_INI_DIR/php.ini
   - echo 'mbstring.func_overload=2' >> $PHP_INI_DIR/php.ini
 
-PHP 7.1:
+PHP 7.1 / Bitrix 18.5:
   stage: test
   image: php:7.1
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script:
+    - php composer.phar require --no-interaction --prefer-dist --dev sheerockoff/bitrix-ci:v18.5
+    - vendor/bin/phpunit --whitelist src/ --coverage-text
 
-PHP 7.2:
+PHP 7.1 / Bitrix 19.0:
+  stage: test
+  image: php:7.1
+  script:
+    - php composer.phar require --no-interaction --prefer-dist --dev sheerockoff/bitrix-ci:v19.0
+    - vendor/bin/phpunit --whitelist src/ --coverage-text
+
+PHP 7.2 / Bitrix 18.5:
   stage: test
   image: php:7.2
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text
+  script:
+    - php composer.phar require --no-interaction --prefer-dist --dev sheerockoff/bitrix-ci:v18.5
+    - vendor/bin/phpunit --whitelist src/ --coverage-text
 
-PHP 7.3:
+PHP 7.2 / Bitrix 19.0:
+  stage: test
+  image: php:7.2
+  script:
+    - php composer.phar require --no-interaction --prefer-dist --dev sheerockoff/bitrix-ci:v19.0
+    - vendor/bin/phpunit --whitelist src/ --coverage-text
+
+PHP 7.3 / Bitrix 18.5:
   stage: test
   image: php:7.3
-  script: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
+  script:
+    - php composer.phar require --no-interaction --prefer-dist --dev sheerockoff/bitrix-ci:v18.5
+    - vendor/bin/phpunit --whitelist src/ --coverage-text
+
+PHP 7.3 / Bitrix 19.0:
+  stage: test
+  image: php:7.3
+  script:
+    - php composer.phar require --no-interaction --prefer-dist --dev sheerockoff/bitrix-ci:v19.0
+    - vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
   artifacts:
     paths:
       - clover.xml
@@ -48,7 +75,7 @@ Code Climate:
   when: on_success
   allow_failure: true
   dependencies:
-    - "PHP 7.3"
+    - PHP 7.3 / Bitrix 19.0
   image: php:7.3
   before_script:
     - apt-get update -yqq && apt-get install -yqq git
