@@ -1,0 +1,22 @@
+name: PHPUnit
+on: [push]
+jobs:
+  PHPUnit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        PHP: ["7.1", "7.2", "7.3"]
+        Bitrix: ["v18.5", "v19.0"]
+    env:
+      PHP: ${{ matrix.PHP }}
+    steps:
+      - uses: actions/checkout@v1
+
+      - name: Install dependencies
+        run: docker-compose run -T bitrix composer install --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist
+
+      - name: Install Bitrix CI
+        run: docker-compose run -T bitrix composer require sheerockoff/bitrix-ci:${{ matrix.Bitrix }} --dev --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist
+
+      - name: Run PHPUnit
+        run: docker-compose run -T bitrix vendor/bin/phpunit
