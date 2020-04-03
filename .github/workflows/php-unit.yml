@@ -29,10 +29,8 @@ jobs:
           discovery.type: single-node
     steps:
       - name: Checkout source
-        uses: actions/checkout@v2
-        with:
-          clean: false
-      - name: Setup environment
+        uses: actions/checkout@v1
+      - name: Set up environment
         run: |
           echo 'short_open_tag=1' >> /opt/docker/etc/php/php.ini
           echo 'mbstring.func_overload=2' >> /opt/docker/etc/php/php.ini
@@ -49,4 +47,4 @@ jobs:
       - name: Run PHPUnit tests
         run: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
       - name: Push data to https://codeclimate.com
-        run: ./cc-test-reporter after-build -t clover -r ${{ secrets.CC_TEST_REPORTER_ID }}
+        run: GIT_BRANCH=${GITHUB_REF##*/} ./cc-test-reporter after-build -t clover -r ${{ secrets.CC_TEST_REPORTER_ID }}
