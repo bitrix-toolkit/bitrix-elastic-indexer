@@ -6,17 +6,45 @@ jobs:
     strategy:
       matrix:
         PHP: ["7.1", "7.2", "7.3", "7.4"]
-        Bitrix: ["v18.5", "v19.0"]
-    env:
-      PHP: ${{ matrix.PHP }}
+        Bitrix: ["18.5", "19.0"]
+    container:
+      image: webdevops/php-dev:${{ matrix.PHP }}
+      env:
+        MYSQL_HOST: mysql
+        MYSQL_DATABASE: bitrix
+        MYSQL_USER: bitrix
+        MYSQL_PASSWORD: bitrix
+        ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+          MYSQL_DATABASE: bitrix
+          MYSQL_USER: bitrix
+          MYSQL_PASSWORD: bitrix
+      elasticsearch:
+        image: elasticsearch:7.2.0
+        env:
+          discovery.type: single-node
     steps:
-      - uses: actions/checkout@v1
-
+      - name: Checkout source
+        uses: actions/checkout@v1
+      - name: Setup environment
+        run: |
+          echo 'short_open_tag=1' >> /opt/docker/etc/php/php.ini
+          echo 'mbstring.func_overload=2' >> /opt/docker/etc/php/php.ini
+          cat /opt/docker/etc/php/php.ini
       - name: Install dependencies
-        run: docker-compose run -T bitrix composer install --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist
-
+        run: composer install --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist
       - name: Install Bitrix CI
-        run: docker-compose run -T bitrix composer require sheerockoff/bitrix-ci:${{ matrix.Bitrix }} --dev --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist
-
-      - name: Run PHPUnit
-        run: docker-compose run -T bitrix vendor/bin/phpunit
+        run: composer require sheerockoff/bitrix-ci:${{ matrix.Bitrix }} --dev --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist
+      - name: Install tools
+        run: |
+          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+          chmod +x ./cc-test-reporter
+          ./cc-test-reporter before-build
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
+      - name: Push data to https://codeclimate.com
+        run: ./cc-test-reporter after-build -t clover -r ${{ secrets.CC_TEST_REPORTER_ID }}
