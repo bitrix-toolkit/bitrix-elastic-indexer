@@ -30,6 +30,8 @@ jobs:
     steps:
       - name: Checkout source
         uses: actions/checkout@v2
+        with:
+          clean: false
       - name: Setup environment
         run: |
           echo 'short_open_tag=1' >> /opt/docker/etc/php/php.ini
