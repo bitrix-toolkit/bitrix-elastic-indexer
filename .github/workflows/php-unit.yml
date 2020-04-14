@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         PHP: ["7.1", "7.2", "7.3", "7.4"]
-        Bitrix: ["18.5", "19.0"]
+        Bitrix: ["18.5", "19.0", "20.0"]
     container:
       image: webdevops/php-dev:${{ matrix.PHP }}
       env:
