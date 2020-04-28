@@ -146,6 +146,13 @@ class Indexer
             );
         }
 
+        $propertiesCount = count($mapping->getProperties());
+        $propertiesCountLimit = $propertiesCount * 2 <= 1000 ? 1000 : $propertiesCount * 2;
+        $this->getElastic()->indices()->putSettings([
+            'index' => $index,
+            'body' => ['index' => ['mapping' => ['total_fields' => ['limit' => $propertiesCountLimit]]]]
+        ]);
+
         $response = $this->getElastic()->indices()->putMapping([
             'index' => $index,
             'body' => $mappingData

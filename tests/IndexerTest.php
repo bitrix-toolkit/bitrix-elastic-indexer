@@ -510,6 +510,42 @@ class IndexerTest extends TestCase
         return $stack;
     }
 
+    /**
+     * @depends testCanPutIndexMapping
+     * @param array $stack
+     * @return array
+     */
+    public function testCanPutIndexMappingWithManyProperties(array $stack = [])
+    {
+        /** @var Indexer $indexer */
+        $indexer = $stack['indexer'];
+
+        $mapping = new IndexMapping();
+        foreach (range(1, 2000) as $i) {
+            $mapping->setProperty("PROPERTY_$i", new PropertyMapping());
+        }
+
+        $this->assertCount(2000, $mapping->getProperties()->getArrayCopy());
+
+        for ($i = 0; $i < 2; $i++) {
+            $isSuccess = $indexer->putMapping('test_limit', $mapping);
+            $this->assertTrue($isSuccess);
+
+            $existMapping = $indexer->getMapping('test_limit');
+            $this->assertInstanceOf(IndexMapping::class, $existMapping);
+
+            /** @var PropertyMapping $propertyMap */
+            foreach ($mapping->getProperties()->getArrayCopy() as $property => $propertyMap) {
+                $this->assertEquals(
+                    $propertyMap->getData()->getArrayCopy(),
+                    $existMapping->getProperty($property)->getData()->getArrayCopy()
+                );
+            }
+        }
+
+        return $stack;
+    }
+
     public function testCanPutIndexData()
     {
         $iBlock = CIBlock::GetList(null, ['=TYPE' => 'elastic_test', '=CODE' => 'PRODUCTS'])->Fetch();
