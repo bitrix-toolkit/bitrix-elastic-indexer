@@ -146,12 +146,17 @@ class Indexer
             );
         }
 
-        $propertiesCount = count($mapping->getProperties());
-        $propertiesCountLimit = $propertiesCount * 2 <= 1000 ? 1000 : $propertiesCount * 2;
-        $this->getElastic()->indices()->putSettings([
-            'index' => $index,
-            'body' => ['index' => ['mapping' => ['total_fields' => ['limit' => $propertiesCountLimit]]]]
-        ]);
+        $limit = $this->getMappingTotalFieldsLimit($index);
+        $need = array_sum(array_map(function (PropertyMapping $property) {
+            return $property->get('type') === 'alias' ? 2 : 1;
+        }, $mapping->getProperties()->getArrayCopy()));
+
+        if ($limit < $need) {
+            $this->getElastic()->indices()->putSettings([
+                'index' => $index,
+                'body' => ['index' => ['mapping' => ['total_fields' => ['limit' => $need]]]]
+            ]);
+        }
 
         $response = $this->getElastic()->indices()->putMapping([
             'index' => $index,
@@ -494,5 +499,22 @@ class Indexer
         }
 
         return $terms ? ['bool' => $terms] : ['match_all' => new stdClass()];
+    }
+
+    /**
+     * @param string $index
+     * @return int|null
+     */
+    private function getMappingTotalFieldsLimit($index)
+    {
+        $response = $this->getElastic()->indices()->getSettings([
+            'index' => $index,
+            'include_defaults' => true,
+        ]);
+
+        $setting = $response[$index]['settings']['index']['mapping']['total_fields']['limit'] ?? null;
+        $default = $response[$index]['defaults']['index']['mapping']['total_fields']['limit'] ?? null;
+
+        return $setting ?? $default;
     }
 }

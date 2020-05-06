@@ -521,8 +521,9 @@ class IndexerTest extends TestCase
         $indexer = $stack['indexer'];
 
         $mapping = new IndexMapping();
-        foreach (range(1, 2000) as $i) {
+        foreach (range(1, 1000) as $i) {
             $mapping->setProperty("PROPERTY_$i", new PropertyMapping());
+            $mapping->setProperty("PROPERTY_{$i}_ALIAS", new PropertyMapping('alias', ['path' => "PROPERTY_$i"]));
         }
 
         $this->assertCount(2000, $mapping->getProperties()->getArrayCopy());
