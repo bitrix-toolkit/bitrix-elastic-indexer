@@ -14,7 +14,7 @@ composer require sheerockoff/bitrix-elastic-indexer
 
 ## Быстрый старт
 
-Подключаем зависимости, создаём клиент Elasticsearch, создаём экземпляр `Indexer`.
+Подключаем зависимости, создаём клиент `Elasticsearch`.
 
 ```php
 <?php
@@ -25,7 +25,19 @@ use Sheerockoff\BitrixElastic\Indexer;
 require 'vendor/autoload.php';
 
 $elastic = ClientBuilder::create()->setHosts(['http://elasticsearch:9200'])->build();
+```
+
+Создаём экземпляр `Indexer`.
+
+```php
 $indexer = new Indexer($elastic);
+```
+
+По-умолчанию методы `Indexer` выбрасывают исключения при ошибках. Чтобы игнорировать некоторые исключение, необходимо
+передать `false` вторым аргументом (`strictMode`) конструктора.
+
+```php
+$indexer = new Indexer($elastic, false);
 ```
 
 Получаем карту индекса для инфоблока.

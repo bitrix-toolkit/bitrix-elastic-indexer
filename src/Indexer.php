@@ -12,16 +12,19 @@ use CIBlockSection;
 use CModule;
 use CPrice;
 use Elasticsearch\Client;
+use Exception;
 use InvalidArgumentException;
 use stdClass;
 
 class Indexer
 {
     private $elastic;
+    private $strictMode;
 
-    public function __construct(Client $elastic)
+    public function __construct(Client $elastic, $strictMode = true)
     {
         $this->elastic = $elastic;
+        $this->strictMode = $strictMode;
     }
 
     /**
@@ -373,28 +376,36 @@ class Indexer
      */
     private function normalizeFilter(IndexMapping $mapping, array $filter)
     {
+        $normalizedFilter = [];
         foreach ($filter as $k => $v) {
             if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $k, $matches)) {
-                throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+                if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+                continue;
             }
 
             $property = $matches['property'];
 
             if (!$mapping->getProperties()->offsetExists($property)) {
-                throw new InvalidArgumentException("$property не найден в карте индекса.");
+                if ($this->strictMode) throw new InvalidArgumentException("$property не найден в карте индекса.");
+                continue;
             }
 
             $isAlias = $mapping->getProperty($property)->get('type') === 'alias';
             if ($isAlias) {
                 $aliasPath = $mapping->getProperty($property)->get('path');
                 if (!$aliasPath) {
-                    throw new InvalidArgumentException("В $property типа alias не указан path.");
+                    if ($this->strictMode) throw new InvalidArgumentException("В $property типа alias не указан path.");
+                    continue;
                 }
 
                 if (!$mapping->getProperties()->offsetExists($aliasPath)) {
-                    throw new InvalidArgumentException(
-                        "$property типа alias указывает на $aliasPath, который не найден в карте индекса."
-                    );
+                    if ($this->strictMode) {
+                        throw new InvalidArgumentException(
+                            "$property типа alias указывает на $aliasPath, который не найден в карте индекса."
+                        );
+                    }
+
+                    continue;
                 }
 
                 $property = $aliasPath;
@@ -408,10 +419,10 @@ class Indexer
                 $value = $mapping->getProperty($property)->normalizeValue($v);
             }
 
-            $filter[$k] = $value;
+            $normalizedFilter[$k] = $value;
         }
 
-        return $filter;
+        return $normalizedFilter;
     }
 
     /**
@@ -424,7 +435,8 @@ class Indexer
         $elasticSort = [];
         foreach ($sort as $property => $dir) {
             if (!$mapping->getProperties()->offsetExists($property)) {
-                throw new InvalidArgumentException("$property не найден в карте индекса для сортировки.");
+                if ($this->strictMode) throw new InvalidArgumentException("$property не найден в карте индекса для сортировки.");
+                continue;
             }
 
             $propMap = $mapping->getProperty($property);
@@ -484,17 +496,25 @@ class Indexer
         $terms = [];
         foreach ($filter as $k => $value) {
             if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $k, $matches)) {
-                throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+                if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+                continue;
             }
 
             $operator = $matches['operator'];
             $property = $matches['property'];
 
             if (!array_key_exists($operator, $operatorMap)) {
-                throw new InvalidArgumentException("Невозможно отфильтровать $property по оператору $operator.");
+                if ($this->strictMode) throw new InvalidArgumentException("Невозможно отфильтровать $property по оператору $operator.");
+                continue;
             }
 
-            $entry = call_user_func($operatorMap[$operator], $property, $value);
+            try {
+                $entry = call_user_func($operatorMap[$operator], $property, $value);
+            } catch (Exception $exception) {
+                if ($this->strictMode) throw $exception;
+                continue;
+            }
+
             $terms = array_merge_recursive($terms, $entry);
         }
 
