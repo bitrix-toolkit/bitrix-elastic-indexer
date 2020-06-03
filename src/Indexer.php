@@ -301,6 +301,12 @@ class Indexer
      */
     public function search(string $index, array $filter, array $sort = ['SORT' => 'ASC', 'ID' => 'DESC'], array $parameters = [])
     {
+        $params = $this->prefabElasticSearchParams($index, $filter, $sort, $parameters);
+        return $this->getElastic()->search($params);
+    }
+
+    public function prefabElasticSearchParams(string $index, array $filter, array $sort = ['SORT' => 'ASC', 'ID' => 'DESC'], array $parameters = [])
+    {
         $mapping = $this->getMapping($index);
         $filter = $this->prefabFilter($filter);
         $filter = $this->normalizeFilter($mapping, $filter);
@@ -310,7 +316,7 @@ class Indexer
         $params = array_merge($params, $this->normalizeSort($mapping, $sort));
         $params = array_merge($params, $parameters);
 
-        return $this->getElastic()->search($params);
+        return $params;
     }
 
     /**
