@@ -1,8 +1,8 @@
 # Bitrix Elasticsearch Indexer
 
 [![PHPUnit](https://github.com/sheerockoff/bitrix-elastic-indexer/workflows/PHPUnit/badge.svg?branch=master)](https://github.com/sheerockoff/bitrix-elastic-indexer/actions)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/d561acac6b825370086b/test_coverage)](https://codeclimate.com/github/sheerockoff/bitrix-elastic-indexer/test_coverage)
-[![Maintainability](https://api.codeclimate.com/v1/badges/d561acac6b825370086b/maintainability)](https://codeclimate.com/github/sheerockoff/bitrix-elastic-indexer/maintainability)
+[![Coverage](https://scrutinizer-ci.com/g/sheerockoff/bitrix-elastic-indexer/badges/coverage.png?b=master)](https://scrutinizer-ci.com/g/sheerockoff/bitrix-elastic-indexer/?branch=master)
+[![Scrutinizer](https://scrutinizer-ci.com/g/sheerockoff/bitrix-elastic-indexer/badges/quality-score.png?b=master)](https://scrutinizer-ci.com/g/sheerockoff/bitrix-elastic-indexer/?branch=master)
 
 Хелпер для индексации данных инфоблока Bitrix в Elasticsearch.
 
