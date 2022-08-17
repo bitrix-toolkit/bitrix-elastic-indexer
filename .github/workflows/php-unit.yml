@@ -19,6 +19,15 @@ jobs:
         MYSQL_PASSWORD: bitrix
         ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     services:
+      elasticsearch:
+        image: elasticsearch:7.2.0
+        env:
+          discovery.type: single-node
+        options: >-
+          --health-cmd="curl http://localhost:9200/_cluster/health"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=6
       mysql:
         image: mysql:5.7
         env:
@@ -30,11 +39,7 @@ jobs:
           --health-cmd="mysqladmin ping"
           --health-interval=10s
           --health-timeout=5s
-          --health-retries=3
-      elasticsearch:
-        image: elasticsearch:7.2.0
-        env:
-          discovery.type: single-node
+          --health-retries=6
     steps:
       - name: Checkout source
         uses: actions/checkout@v1
