@@ -31,7 +31,6 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=3
-          mysqld
       elasticsearch:
         image: elasticsearch:7.2.0
         env:
