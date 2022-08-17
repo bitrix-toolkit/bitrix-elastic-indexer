@@ -1,19 +1,20 @@
 version: "2.1"
 services:
   bitrix:
-    image: webdevops/php-dev:${PHP-7.1}
+    image: webdevops/php-dev:${PHP-7.4}
     volumes:
       - ./:/app/
     working_dir: /app/
     depends_on:
       - mysql
       - elasticsearch
-    ports:
-      - 80:80
     environment:
       php.short_open_tag: 1
       php.mbstring.func_oveload: 2
       php.display_errors: 1
+      php.max_input_vars: 10000
+      php.date.timezone: "Europe/Moscow"
+      DEBUG: 1
       MYSQL_HOST: mysql
       MYSQL_DATABASE: bitrix
       MYSQL_USER: bitrix
@@ -21,6 +22,11 @@ services:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
   mysql:
     image: mysql:5.7
+    command: >-
+      --default-time-zone=Europe/Moscow
+      --character-set-server=utf8
+      --collation-server=utf8_unicode_ci
+      --skip-innodb-strict-mode
     environment:
       MYSQL_RANDOM_ROOT_PASSWORD: "yes"
       MYSQL_DATABASE: bitrix
@@ -35,6 +41,6 @@ services:
     depends_on:
       - elasticsearch
     ports:
-      - 5601:5601
+      - ${KIBANA_PORT-5601}:5601
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
