@@ -6,7 +6,10 @@ jobs:
     strategy:
       matrix:
         PHP: ["7.1", "7.2", "7.3", "7.4"]
-        Bitrix: ["18.5", "19.0", "20.0", "20.5"]
+        Bitrix: ["18.5", "19.0", "20.0", "20.5", "21.400"]
+        exclude:
+          - { PHP: "7.1", Bitrix: "21.400" }
+          - { PHP: "7.2", Bitrix: "21.400" }
     container:
       image: webdevops/php-dev:${{ matrix.PHP }}
       env:
@@ -23,6 +26,15 @@ jobs:
           MYSQL_DATABASE: bitrix
           MYSQL_USER: bitrix
           MYSQL_PASSWORD: bitrix
+        options: >-
+          --default-time-zone=Europe/Moscow
+          --character-set-server=utf8
+          --collation-server=utf8_unicode_ci
+          --skip-innodb-strict-mode
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
       elasticsearch:
         image: elasticsearch:7.2.0
         env:
@@ -34,6 +46,8 @@ jobs:
         run: |
           echo 'short_open_tag=1' >> /opt/docker/etc/php/php.ini
           echo 'mbstring.func_overload=2' >> /opt/docker/etc/php/php.ini
+          echo 'max_input_vars=10000' >> /opt/docker/etc/php/php.ini
+          echo 'date.timezone=Europe/Moscow' >> /opt/docker/etc/php/php.ini
           cat /opt/docker/etc/php/php.ini
       - name: Install dependencies
         run: composer install --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist

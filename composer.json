@@ -16,7 +16,7 @@
     },
     "require": {
         "php": ">=7.1",
-      "ext-json": "*",
+        "ext-json": "*",
         "elasticsearch/elasticsearch": "^7.1"
     },
     "autoload-dev": {
@@ -27,6 +27,6 @@
     "require-dev": {
         "phpunit/phpunit": "^7.5",
         "symfony/var-dumper": "^4.3",
-        "sheerockoff/bitrix-ci": "^18.5"
+        "sheerockoff/bitrix-ci": "21.400"
     }
 }
