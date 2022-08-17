@@ -11,3 +11,7 @@ if (!getenv('SKIP_MIGRATION', true) && !getenv('SKIP_MIGRATION')) {
 }
 
 BitrixCi\Bootstrap::bootstrap();
+
+while (ob_get_level()) {
+    ob_end_clean();
+}
