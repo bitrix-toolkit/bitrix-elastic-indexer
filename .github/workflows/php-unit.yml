@@ -41,10 +41,12 @@ jobs:
           --health-timeout=5s
           --health-retries=6
     steps:
-      - name: Change Owner of Container Working Directory
+      - name: https://github.com/actions/runner-images/issues/6775#issuecomment-1398673974
         run: chown root:root .
       - name: Checkout source
         uses: actions/checkout@v1
+      - name: https://github.com/actions/runner-images/issues/6775#issuecomment-1361431837
+        run: git config --global --add safe.directory /__w/bitrix-elastic-indexer/bitrix-elastic-indexer
       - name: Set up environment
         run: |
           echo 'short_open_tag=1' >> /opt/docker/etc/php/php.ini
