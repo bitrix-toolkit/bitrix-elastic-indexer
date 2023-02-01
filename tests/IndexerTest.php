@@ -625,6 +625,10 @@ class IndexerTest extends TestCase
             'PROPERTY_CODE' => 'COLOR', 'VALUE' => 'Silver'
         ])->Fetch();
 
+        $redColorEnum = CIBlockPropertyEnum::GetList(null, [
+            'PROPERTY_CODE' => 'COLOR', 'VALUE' => 'Red'
+        ])->Fetch();
+
         $filters = [
             [
                 'IBLOCK_ID' => $stack['iBlockId'],
@@ -661,6 +665,33 @@ class IndexerTest extends TestCase
             ],
             [
                 'PROPERTY_' . $silverColorEnum['PROPERTY_ID'] . '_VALUE' => 'Silver',
+            ],
+            [
+                'IBLOCK_ID' => $stack['iBlockId'],
+                [
+                    'LOGIC' => 'OR',
+                    '=PROPERTY_COLOR' => $redColorEnum['ID'],
+                    'PROPERTY_TAGS' => 'new',
+                ]
+            ],
+            [
+                '=PROPERTY_COLOR' => $redColorEnum['ID'],
+                [
+                    'LOGIC' => 'OR',
+                    // Без условий.
+                ],
+            ],
+            [
+                'IBLOCK_ID' => $stack['iBlockId'],
+                [
+                    'LOGIC' => 'OR',
+                    '=PROPERTY_COLOR' => $redColorEnum['ID'],
+                    [
+                        'LOGIC' => 'AND',
+                        'PROPERTY_TAGS' => 'new',
+                        '<CATALOG_PRICE_' . $basePriceId => 10000,
+                    ]
+                ]
             ],
             [
                 'SECTION_CODE' => 'mobile',
