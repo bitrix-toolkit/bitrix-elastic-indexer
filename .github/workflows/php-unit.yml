@@ -41,6 +41,8 @@ jobs:
           --health-timeout=5s
           --health-retries=6
     steps:
+      - name: Change Owner of Container Working Directory
+        run: chown root:root .
       - name: Checkout source
         uses: actions/checkout@v1
       - name: Set up environment
