@@ -682,6 +682,18 @@ class IndexerTest extends TestCase
                 ],
             ],
             [
+                'IBLOCK_ID' => $stack['iBlockId'],
+                [
+                    'LOGIC' => 'OR',
+                    '=PROPERTY_COLOR' => $redColorEnum['ID'],
+                    [
+                        'LOGIC' => 'AND',
+                        'PROPERTY_TAGS' => 'new',
+                        '<CATALOG_PRICE_' . $basePriceId => 10000,
+                    ]
+                ]
+            ],
+            [
                 'SECTION_CODE' => 'mobile',
                 'INCLUDE_SUBSECTIONS' => 'Y'
             ],

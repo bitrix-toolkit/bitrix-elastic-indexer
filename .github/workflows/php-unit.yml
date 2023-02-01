@@ -55,7 +55,7 @@ jobs:
       - name: Install Bitrix CI
         run: composer require sheerockoff/bitrix-ci:${{ matrix.Bitrix }} --dev --no-ansi --no-interaction --no-suggest --no-progress --prefer-dist
       - name: Run PHPUnit tests
-        run: vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
+        run: XDEBUG_MODE=coverage vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
       - name: Push data to https://scrutinizer-ci.com
         run: |
           wget -nv https://scrutinizer-ci.com/ocular.phar

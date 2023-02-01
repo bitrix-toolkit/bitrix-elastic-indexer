@@ -384,11 +384,11 @@ class Indexer
     {
         $normalizedFilter = [];
         foreach ($filter as $k => $v) {
-            if (is_array($v) && ($v['LOGIC'] ?? null) === 'OR') {
-                $orFilter = $v;
-                unset($orFilter['LOGIC']);
-                $orFilter = $this->normalizeFilter($mapping, $orFilter);
-                $normalizedFilter[$k] = array_merge(['LOGIC' => 'OR'], $orFilter);
+            if (is_array($v) && array_key_exists('LOGIC', $v)) {
+                $subFilter = $v;
+                unset($subFilter['LOGIC']);
+                $subFilter = $this->normalizeFilter($mapping, $subFilter);
+                $normalizedFilter[$k] = array_merge(['LOGIC' => $v['LOGIC']], $subFilter);
                 continue;
             }
 
@@ -511,10 +511,10 @@ class Indexer
 
         $terms = [];
         foreach ($filter as $k => $value) {
-            if (is_array($value) && ($value['LOGIC'] ?? null) === 'OR') {
-                $orFilter = $value;
-                unset($orFilter['LOGIC']);
-                $subQuery = $this->prepareFilterQuery($orFilter, 'should');
+            if (is_array($value) && array_key_exists('LOGIC', $value)) {
+                $subFilter = $value;
+                unset($subFilter['LOGIC']);
+                $subQuery = $this->prepareFilterQuery($subFilter, strtoupper($value['LOGIC']) === 'OR' ? 'should' : 'must');
 
                 $terms = array_merge_recursive($terms, [$condition => [$subQuery]]);
             } else {
