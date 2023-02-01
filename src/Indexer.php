@@ -384,6 +384,14 @@ class Indexer
     {
         $normalizedFilter = [];
         foreach ($filter as $k => $v) {
+            if (is_array($v) && ($v['LOGIC'] ?? null) === 'OR') {
+                $orFilter = $v;
+                unset($orFilter['LOGIC']);
+                $orFilter = $this->normalizeFilter($mapping, $orFilter);
+                $normalizedFilter[$k] = array_merge(['LOGIC' => 'OR'], $orFilter);
+                continue;
+            }
+
             if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $k, $matches)) {
                 if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
                 continue;
@@ -458,70 +466,80 @@ class Indexer
 
     /**
      * @param array $filter
+     * @param string $condition must|should
      * @return array
+     * @throws Exception
      */
-    private function prepareFilterQuery(array $filter)
+    private function prepareFilterQuery(array $filter, $condition = 'must')
     {
         $operatorMap = [
-            '' => function ($k, $v) {
+            '' => function ($k, $v, $condition = 'must') {
                 $query = is_array($v) ? 'terms' : 'term';
-                return ['must' => [[$query => [$k => $v]]]];
+                return [$condition => [[$query => [$k => $v]]]];
             },
-            '=' => function ($k, $v) {
+            '=' => function ($k, $v, $condition = 'must') {
                 $query = is_array($v) ? 'terms' : 'term';
-                return ['must' => [[$query => [$k => $v]]]];
+                return [$condition => [[$query => [$k => $v]]]];
             },
-            '!' => function ($k, $v) {
+            '!' => function ($k, $v, $condition = 'must') {
                 $query = is_array($v) ? 'terms' : 'term';
-                return ['must_not' => [[$query => [$k => $v]]]];
+                return ["{$condition}_not" => [[$query => [$k => $v]]]];
             },
-            '%' => function ($k, $v) {
-                return ['must' => [['wildcard' => [$k => "*$v*"]]]];
+            '%' => function ($k, $v, $condition = 'must') {
+                return [$condition => [['wildcard' => [$k => "*$v*"]]]];
             },
-            '>' => function ($k, $v) {
-                return ['must' => [['range' => [$k => ['gt' => $v]]]]];
+            '>' => function ($k, $v, $condition = 'must') {
+                return [$condition => [['range' => [$k => ['gt' => $v]]]]];
             },
-            '>=' => function ($k, $v) {
-                return ['must' => [['range' => [$k => ['gte' => $v]]]]];
+            '>=' => function ($k, $v, $condition = 'must') {
+                return [$condition => [['range' => [$k => ['gte' => $v]]]]];
             },
-            '<' => function ($k, $v) {
-                return ['must' => [['range' => [$k => ['lt' => $v]]]]];
+            '<' => function ($k, $v, $condition = 'must') {
+                return [$condition => [['range' => [$k => ['lt' => $v]]]]];
             },
-            '<=' => function ($k, $v) {
-                return ['must' => [['range' => [$k => ['lte' => $v]]]]];
+            '<=' => function ($k, $v, $condition = 'must') {
+                return [$condition => [['range' => [$k => ['lte' => $v]]]]];
             },
-            '><' => function ($k, $v) {
+            '><' => function ($k, $v, $condition = 'must') {
                 if (!isset($v[0]) || !isset($v[1])) {
                     throw new InvalidArgumentException("Для фильтра ><$k должен быть указан массив значений.");
                 }
 
-                return ['must' => [['range' => [$k => ['gte' => $v[0], 'lte' => $v[1]]]]]];
+                return [$condition => [['range' => [$k => ['gte' => $v[0], 'lte' => $v[1]]]]]];
             }
         ];
 
         $terms = [];
         foreach ($filter as $k => $value) {
-            if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $k, $matches)) {
-                if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
-                continue;
+            if (is_array($value) && ($value['LOGIC'] ?? null) === 'OR') {
+                $orFilter = $value;
+                unset($orFilter['LOGIC']);
+                $subQuery = $this->prepareFilterQuery($orFilter, 'should');
+
+                $terms = array_merge_recursive($terms, [$condition => [$subQuery]]);
+            } else {
+                if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/uis', $k, $matches)) {
+                    if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+                    continue;
+                }
+
+                $operator = $matches['operator'];
+                $property = $matches['property'];
+
+                if (!array_key_exists($operator, $operatorMap)) {
+                    if ($this->strictMode) throw new InvalidArgumentException("Невозможно отфильтровать $property по оператору $operator.");
+                    continue;
+                }
+
+                try {
+                    $entry = call_user_func($operatorMap[$operator], $property, $value, $condition);
+                } catch (Exception $exception) {
+                    if ($this->strictMode) throw $exception;
+                    continue;
+                }
+
+                $terms = array_merge_recursive($terms, $entry);
             }
-
-            $operator = $matches['operator'];
-            $property = $matches['property'];
-
-            if (!array_key_exists($operator, $operatorMap)) {
-                if ($this->strictMode) throw new InvalidArgumentException("Невозможно отфильтровать $property по оператору $operator.");
-                continue;
-            }
-
-            try {
-                $entry = call_user_func($operatorMap[$operator], $property, $value);
-            } catch (Exception $exception) {
-                if ($this->strictMode) throw $exception;
-                continue;
-            }
-
-            $terms = array_merge_recursive($terms, $entry);
         }
 
         return $terms ? ['bool' => $terms] : ['match_all' => new stdClass()];
