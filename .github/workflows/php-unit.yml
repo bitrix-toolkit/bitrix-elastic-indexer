@@ -20,7 +20,7 @@ jobs:
         ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     services:
       elasticsearch:
-        image: elasticsearch:7.2.0
+        image: elasticsearch:7.17.9
         env:
           discovery.type: single-node
         options: >-

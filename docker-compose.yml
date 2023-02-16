@@ -33,11 +33,11 @@ services:
       MYSQL_USER: bitrix
       MYSQL_PASSWORD: bitrix
   elasticsearch:
-    image: elasticsearch:7.2.0
+    image: elasticsearch:${ELASTICSEARCH-7.17.9}
     environment:
       discovery.type: single-node
   kibana:
-    image: kibana:7.2.0
+    image: kibana:${ELASTICSEARCH-7.17.9}
     depends_on:
       - elasticsearch
     ports:
