@@ -5,6 +5,7 @@
 namespace Sheerockoff\BitrixElastic\Test;
 
 use _CIBElement;
+use Bitrix\Main\Type\DateTime as BitrixDateTime;
 use CCatalog;
 use CCatalogGroup;
 use CCatalogStore;
@@ -17,6 +18,7 @@ use CIBlockPropertyEnum;
 use CIBlockSection;
 use CIBlockType;
 use CPrice;
+use DateTime;
 use Elasticsearch\Client;
 use InvalidArgumentException;
 use ReflectionException;
@@ -202,6 +204,18 @@ class IndexerTest extends TestCase
 
         self::assertNotEmpty($isPropAdded, $cIBlockProperty->LAST_ERROR);
 
+        $cIBlockProperty = new CIBlockProperty();
+        $isPropAdded = $cIBlockProperty->Add([
+            'IBLOCK_ID' => $iBlockId,
+            'CODE' => 'RELEASE_DATE',
+            'NAME' => 'Дата выхода',
+            'MULTIPLE' => 'N',
+            'PROPERTY_TYPE' => 'S',
+            'USER_TYPE' => 'DateTime',
+        ]);
+
+        self::assertNotEmpty($isPropAdded, $cIBlockProperty->LAST_ERROR);
+
         $csv = fopen(__DIR__ . '/products.csv', 'r');
         $keys = fgetcsv($csv);
 
@@ -236,6 +250,7 @@ class IndexerTest extends TestCase
                     'COLOR' => $colorValues[$row['COLOR']]['ID'],
                     'OLD_PRICE' => $row['OLD_PRICE'],
                     'TAGS' => explode(',', $row['TAGS']),
+                    'RELEASE_DATE' => !empty($row['RELEASE_DATE']) ? BitrixDateTime::createFromPhp(new DateTime($row['RELEASE_DATE'])) : false,
                 ]
             ]);
 
@@ -777,10 +792,19 @@ class IndexerTest extends TestCase
             ['NAME' => 'DESC', 'ID' => 'ASC'],
             ['DATE_CREATE' => 'DESC', 'ID' => 'DESC'],
             ['PROPERTY_OLD_PRICE' => 'DESC', 'ID' => 'DESC'],
+            ['PROPERTY_OLD_PRICE' => 'ASC,NULLS'],
+            ['PROPERTY_OLD_PRICE' => 'NULLS,ASC'],
+            ['PROPERTY_OLD_PRICE' => 'DESC,NULLS'],
+            ['PROPERTY_OLD_PRICE' => 'NULLS,DESC'],
+            ['PROPERTY_COLOR' => 'ASC,NULLS', 'ID' => 'DESC'],
+            ['PROPERTY_RELEASE_DATE' => 'ASC,NULLS', 'ID' => 'DESC'],
+            ['PROPERTY_RELEASE_DATE' => 'DESC,NULLS', 'ID' => 'DESC'],
+            ['PROPERTY_RELEASE_DATE' => 'NULLS,ASC', 'ID' => 'DESC'],
+            ['PROPERTY_RELEASE_DATE' => 'NULLS,DESC', 'ID' => 'DESC'],
         ];
 
         foreach ($sorts as $sort) {
-            $response = $indexer->search('test_products', $filter, $sort);
+            $response = $indexer->search('test_products', $filter, $sort, ['size' => 20]);
             $this->assertNotEmpty($response['hits']['hits']);
 
             $elasticIds = array_map(function ($hit) {
@@ -800,7 +824,7 @@ class IndexerTest extends TestCase
                 return (int)$element->fields['ID'];
             }, $elements);
 
-            $this->assertSame(array_slice($bitrixIds, 0, 10), array_slice($elasticIds, 0, 10));
+            $this->assertSame(array_slice($bitrixIds, 0, 20), array_slice($elasticIds, 0, 20), 'Sort ' . json_encode($sort) . ' failed');
         }
 
         return $stack;
@@ -1000,6 +1024,20 @@ class IndexerTest extends TestCase
     {
         $indexer = new Indexer(self::getElasticClient(), false);
         $result = $indexer->search('test_products', [], ['UNDEFINED_PROPERTY' => 'ASC']);
+        $this->assertNotEmpty($result['hits']['hits']);
+    }
+
+    public function testExceptOnSortByWrongDirection()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', [], ['PROPERTY_COLOR' => 'WRONG_DIRECTION']);
+    }
+
+    public function testNotStrictModeOnSortByWrongDirection()
+    {
+        $indexer = new Indexer(self::getElasticClient(), false);
+        $result = $indexer->search('test_products', [], ['PROPERTY_COLOR' => 'WRONG_DIRECTION']);
         $this->assertNotEmpty($result['hits']['hits']);
     }
 }
