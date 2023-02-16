@@ -313,7 +313,7 @@ class Indexer
         $query = $this->prepareFilterQuery($filter);
 
         $params = ['index' => $index, 'body' => ['query' => $query]];
-        $params = array_merge($params, $this->normalizeSort($mapping, $sort));
+        $params['body'] = array_merge($params['body'], $this->normalizeSort($mapping, $sort));
         $params = array_merge($params, $parameters);
 
         return $params;
@@ -446,22 +446,66 @@ class Indexer
      */
     private function normalizeSort(IndexMapping $mapping, array $sort)
     {
-        $elasticSort = [];
-        foreach ($sort as $property => $dir) {
+        $elasticSorts = [];
+        foreach ($sort as $property => $term) {
             if (!$mapping->getProperties()->offsetExists($property)) {
                 if ($this->strictMode) throw new InvalidArgumentException("$property не найден в карте индекса для сортировки.");
                 continue;
             }
 
+            $sortOrder = 'asc';
+            $emptySort = null;
+            if (preg_match('/(?<first>nulls\s*,\s*)?(?<dir>asc|desc)(?<last>\s*,\s*nulls)?/ui', $term, $matches)) {
+                $sortOrder = strtolower($matches['dir']);
+                if (!empty($matches['first'])) {
+                    $emptySort = 'asc';
+                } elseif (!empty($matches['last'])) {
+                    $emptySort = 'desc';
+                }
+            } else {
+                if ($this->strictMode) throw new InvalidArgumentException("Неверный формат сортировки ($term).");
+                continue;
+            }
+
             $propMap = $mapping->getProperty($property);
             if (isset($propMap->getData()['fields']['enum'])) {
-                $elasticSort[] = $property . '_VALUE:' . strtolower($dir);
+                $sortField = $property . '_VALUE';
             } else {
-                $elasticSort[] = $property . ':' . strtolower($dir);
+                $sortField = $property;
             }
+
+            if ($emptySort) {
+                $emptyValuesForTypes = [
+                    'integer' => '0',
+                    'long' => '0',
+                    'float' => '0.0',
+                    'double' => '0.0',
+                    'date' => 'null',
+                    'boolean' => 'false',
+                    'string' => '',
+                ];
+
+                $elasticSorts[] = [
+                    '_script' => [
+                        'type' => 'number',
+                        'script' => [
+                            'lang' => 'painless',
+                            'source' => sprintf(
+                                "if (doc['%s'].empty || doc['%s'].value == %s) { return 0; } else { return 1; }",
+                                $sortField,
+                                $sortField,
+                                $emptyValuesForTypes[$propMap->get('type')] ?? 'null'
+                            )
+                        ],
+                        'order' => $emptySort
+                    ]
+                ];
+            }
+
+            $elasticSorts[] = [$sortField => ['order' => $sortOrder]];
         }
 
-        return $elasticSort ? ['sort' => implode(',', $elasticSort)] : [];
+        return $elasticSorts ? ['sort' => $elasticSorts] : [];
     }
 
     /**
