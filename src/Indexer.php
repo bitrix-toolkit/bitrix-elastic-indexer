@@ -21,6 +21,8 @@ class Indexer
     private $elastic;
     private $strictMode;
 
+    private $runtimeCache = [];
+
     public function __construct(Client $elastic, $strictMode = true)
     {
         $this->elastic = $elastic;
@@ -110,7 +112,6 @@ class Indexer
      */
     public function getMapping(string $index)
     {
-
         if ($this->getElastic()->indices()->exists(['index' => $index])) {
             $response = $this->getElastic()->indices()->getMapping(['index' => $index]);
             $mappingData = $response[$index]['mappings'] ?: [];
@@ -123,7 +124,18 @@ class Indexer
             $mapping->setProperty($property, new PropertyMapping($propertyData['type'] ?: null, $propertyData));
         }
 
+        $this->runtimeCache['mapping'][$index] = $mapping;
+
         return $mapping;
+    }
+
+    public function getCachedMapping(string $index)
+    {
+        if (array_key_exists($index, $this->runtimeCache['mapping'] ?? [])) {
+            return $this->runtimeCache['mapping'][$index];
+        } else {
+            return $this->getMapping($index);
+        }
     }
 
     /**
@@ -133,6 +145,10 @@ class Indexer
      */
     public function putMapping(string $index, IndexMapping $mapping)
     {
+        if (array_key_exists($index, $this->runtimeCache['mapping'] ?? [])) {
+            unset($this->runtimeCache['mapping'][$index]);
+        }
+
         if ($this->getElastic()->indices()->exists(['index' => $index])) {
             $response = $this->getElastic()->indices()->getMapping(['index' => $index]);
             $existMappingData = $response[$index]['mappings'] ?: [];
@@ -307,7 +323,7 @@ class Indexer
 
     public function prefabElasticSearchParams(string $index, array $filter, array $sort = ['SORT' => 'ASC', 'ID' => 'DESC'], array $parameters = [])
     {
-        $mapping = $this->getMapping($index);
+        $mapping = $this->getCachedMapping($index);
         $filter = $this->prefabFilter($filter);
         $filter = $this->normalizeFilter($mapping, $filter);
         $query = $this->prepareFilterQuery($filter);
