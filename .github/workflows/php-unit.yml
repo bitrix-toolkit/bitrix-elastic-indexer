@@ -5,11 +5,25 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        PHP: ["7.1", "7.2", "7.3", "7.4"]
-        Bitrix: ["18.5", "19.0", "20.0", "20.5", "21.400"]
+        PHP: ["7.3", "7.4", "8.0", "8.1", "8.2"]
+        Bitrix: ["18.5", "19.0", "20.0", "20.5", "21.400", "22.600"]
         exclude:
-          - { PHP: "7.1", Bitrix: "21.400" }
-          - { PHP: "7.2", Bitrix: "21.400" }
+          - { PHP: "7.3", Bitrix: "22.600" }
+          - { PHP: "8.0", Bitrix: "18.5" }
+          - { PHP: "8.0", Bitrix: "19.0" }
+          - { PHP: "8.0", Bitrix: "20.0" }
+          - { PHP: "8.0", Bitrix: "20.5" }
+          - { PHP: "8.0", Bitrix: "21.400" }
+          - { PHP: "8.1", Bitrix: "18.5" }
+          - { PHP: "8.1", Bitrix: "19.0" }
+          - { PHP: "8.1", Bitrix: "20.0" }
+          - { PHP: "8.1", Bitrix: "20.5" }
+          - { PHP: "8.1", Bitrix: "21.400" }
+          - { PHP: "8.2", Bitrix: "18.5" }
+          - { PHP: "8.2", Bitrix: "19.0" }
+          - { PHP: "8.2", Bitrix: "20.0" }
+          - { PHP: "8.2", Bitrix: "20.5" }
+          - { PHP: "8.2", Bitrix: "21.400" }
     container:
       image: webdevops/php-dev:${{ matrix.PHP }}
       env:
@@ -61,6 +75,7 @@ jobs:
       - name: Run PHPUnit tests
         run: XDEBUG_MODE=coverage vendor/bin/phpunit --whitelist src/ --coverage-text --coverage-clover clover.xml
       - name: Push data to https://scrutinizer-ci.com
+        if: matrix.PHP == '7.4' && matrix.Bitrix == '21.400'
         run: |
           wget -nv https://scrutinizer-ci.com/ocular.phar
           php ocular.phar code-coverage:upload --format=php-clover clover.xml

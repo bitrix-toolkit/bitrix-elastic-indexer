@@ -29,11 +29,16 @@ use Sheerockoff\BitrixElastic\PropertyMapping;
 
 class IndexerTest extends TestCase
 {
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         global $APPLICATION;
 
         self::tearDownAfterClass();
+
+        $elements = CIBlockElement::GetList(['ID' => 'ASC']);
+        while ($element = $elements->Fetch()) {
+            CIBlockElement::Delete($element['ID']);
+        }
 
         $cIBlockType = new CIBlockType();
         $isTypeAdded = $cIBlockType->Add([
@@ -138,7 +143,7 @@ class IndexerTest extends TestCase
             'TITLE' => 'Основной склад',
             'XML_ID' => 'MAIN',
             'ACTIVE' => 'Y',
-            'ADDRESS' => '',
+            'ADDRESS' => 'Липецк',
             'DESCRIPTION' => ''
         ]);
 
@@ -148,7 +153,7 @@ class IndexerTest extends TestCase
             'TITLE' => 'Запасной склад',
             'XML_ID' => 'SECONDARY',
             'ACTIVE' => 'Y',
-            'ADDRESS' => '',
+            'ADDRESS' => 'Тамбов',
             'DESCRIPTION' => ''
         ]);
 
@@ -287,7 +292,7 @@ class IndexerTest extends TestCase
         fclose($csv);
     }
 
-    public static function tearDownAfterClass()
+    public static function tearDownAfterClass(): void
     {
         CIBlockType::Delete('elastic_test');
 
@@ -728,7 +733,7 @@ class IndexerTest extends TestCase
         ];
 
         foreach ($filters as $filter) {
-            $response = $indexer->search('test_products', $filter);
+            $response = $indexer->search('test_products', $filter, ['ID' => 'ASC'], ['size' => 20]);
             $this->assertNotEmpty($response['hits']['hits'], 'No elasticsearch hits for ' . json_encode($filter));
 
             $elasticIds = array_map(function ($hit) {
@@ -736,7 +741,7 @@ class IndexerTest extends TestCase
             }, $response['hits']['hits']);
 
             $elements = [];
-            $rs = CIBlockElement::GetList(null, $filter);
+            $rs = CIBlockElement::GetList(['ID' => 'ASC'], $filter);
             while ($element = $rs->GetNextElement()) {
                 $elements[] = $element;
             }
@@ -749,8 +754,8 @@ class IndexerTest extends TestCase
             }, $elements);
 
             $this->assertSame(
-                array_slice(sort($bitrixIds), 0, 10),
-                array_slice(sort($elasticIds), 0, 10)
+                array_slice($bitrixIds, 0, 20),
+                array_slice($elasticIds, 0, 20)
             );
         }
 
