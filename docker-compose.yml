@@ -10,7 +10,7 @@ services:
       - elasticsearch
     environment:
       php.short_open_tag: 1
-      php.mbstring.func_oveload: 2
+      php.mbstring.func_overload: 2
       php.display_errors: 1
       php.max_input_vars: 10000
       php.date.timezone: "Europe/Moscow"
