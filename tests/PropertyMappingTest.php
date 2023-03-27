@@ -190,15 +190,19 @@ class PropertyMappingTest extends TestCase
 
         $propertyMap = new PropertyMapping('integer');
         $this->assertSame(99, $propertyMap->normalizeValue(99.00));
+        $this->assertSame(null, $propertyMap->normalizeValue(''));
 
         $propertyMap = new PropertyMapping('long');
         $this->assertSame(99, $propertyMap->normalizeValue('99'));
+        $this->assertSame(null, $propertyMap->normalizeValue(''));
 
         $propertyMap = new PropertyMapping('float');
         $this->assertSame(99.00, $propertyMap->normalizeValue(99));
+        $this->assertSame(null, $propertyMap->normalizeValue(''));
 
         $propertyMap = new PropertyMapping('double');
         $this->assertSame(99.00, $propertyMap->normalizeValue('99.0'));
+        $this->assertSame(null, $propertyMap->normalizeValue(''));
 
         $propertyMap = new PropertyMapping('boolean');
         $this->assertSame(true, $propertyMap->normalizeValue('Y'));

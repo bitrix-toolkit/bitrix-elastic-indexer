@@ -534,16 +534,40 @@ class Indexer
     {
         $operatorMap = [
             '' => function ($k, $v, $condition = 'must') {
-                $query = is_array($v) ? 'terms' : 'term';
-                return [$condition => [[$query => [$k => $v]]]];
+                if ($v === false || $v === null) {
+                    if ($condition === 'should') {
+                        return ['should' => [['bool' => ['must_not' => [['exists' => ['field' => $k]]]]]]];
+                    } else {
+                        return ["{$condition}_not" => [['exists' => ['field' => $k]]]];
+                    }
+                } else {
+                    $query = is_array($v) ? 'terms' : 'term';
+                    return [$condition => [[$query => [$k => $v]]]];
+                }
             },
             '=' => function ($k, $v, $condition = 'must') {
-                $query = is_array($v) ? 'terms' : 'term';
-                return [$condition => [[$query => [$k => $v]]]];
+                if ($v === false || $v === null) {
+                    if ($condition === 'should') {
+                        return ['should' => [['bool' => ['must_not' => [['exists' => ['field' => $k]]]]]]];
+                    } else {
+                        return ["{$condition}_not" => [['exists' => ['field' => $k]]]];
+                    }
+                } else {
+                    $query = is_array($v) ? 'terms' : 'term';
+                    return [$condition => [[$query => [$k => $v]]]];
+                }
             },
             '!' => function ($k, $v, $condition = 'must') {
-                $query = is_array($v) ? 'terms' : 'term';
-                return ["{$condition}_not" => [[$query => [$k => $v]]]];
+                if ($v === false || $v === null) {
+                    return [$condition => [['exists' => ['field' => $k]]]];
+                } else {
+                    $query = is_array($v) ? 'terms' : 'term';
+                    if ($condition === 'should') {
+                        return ['should' => [['bool' => ['must_not' => [[$query => [$k => $v]]]]]]];
+                    } else {
+                        return ["{$condition}_not" => [[$query => [$k => $v]]]];
+                    }
+                }
             },
             '%' => function ($k, $v, $condition = 'must') {
                 return [$condition => [['wildcard' => [$k => "*$v*"]]]];

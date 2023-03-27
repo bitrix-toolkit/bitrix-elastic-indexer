@@ -114,12 +114,24 @@ class PropertyMapping implements JsonSerializable
     public function normalizeValue($value)
     {
         $map = [
-            'keyword' => 'strval',
-            'text' => 'strval',
-            'integer' => 'intval',
-            'long' => 'intval',
-            'float' => 'floatval',
-            'double' => 'floatval',
+            'keyword' => function ($value) {
+                return $value !== null && $value !== false ? strval($value) : null;
+            },
+            'text' => function ($value) {
+                return $value !== null && $value !== false ? strval($value) : null;
+            },
+            'integer' => function ($value) {
+                return is_numeric($value) ? intval($value) : null;
+            },
+            'long' => function ($value) {
+                return is_numeric($value) ? intval($value) : null;
+            },
+            'float' => function ($value) {
+                return is_numeric($value) ? floatval($value) : null;
+            },
+            'double' => function ($value) {
+                return is_numeric($value) ? floatval($value) : null;
+            },
             'boolean' => function ($value) {
                 return $value && $value !== 'N';
             },

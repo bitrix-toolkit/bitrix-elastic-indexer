@@ -253,7 +253,7 @@ class IndexerTest extends TestCase
                 'DETAIL_PICTURE' => CFile::MakeFileArray(__DIR__ . '/' . $row['IMAGE']),
                 'PROPERTY_VALUES' => [
                     'COLOR' => $colorValues[$row['COLOR']]['ID'],
-                    'OLD_PRICE' => $row['OLD_PRICE'],
+                    'OLD_PRICE' => is_numeric($row['OLD_PRICE']) ? $row['OLD_PRICE'] : false,
                     'TAGS' => explode(',', $row['TAGS']),
                     'RELEASE_DATE' => !empty($row['RELEASE_DATE']) ? BitrixDateTime::createFromPhp(new DateTime($row['RELEASE_DATE'])) : false,
                 ]
@@ -695,6 +695,14 @@ class IndexerTest extends TestCase
                 ]
             ],
             [
+                'IBLOCK_ID' => $stack['iBlockId'],
+                [
+                    'LOGIC' => 'OR',
+                    '!PROPERTY_COLOR' => $redColorEnum['ID'],
+                    'PROPERTY_TAGS' => 'new',
+                ]
+            ],
+            [
                 '=PROPERTY_COLOR' => $redColorEnum['ID'],
                 [
                     'LOGIC' => 'OR',
@@ -729,7 +737,36 @@ class IndexerTest extends TestCase
                 'SECTION_ID' => $phoneSection['ID'],
                 'INCLUDE_SUBSECTIONS' => 'N'
             ],
-            []
+            [],
+            [
+                'PROPERTY_OLD_PRICE' => false,
+            ],
+            [
+                '!PROPERTY_OLD_PRICE' => false,
+            ],
+            [
+                '>PROPERTY_OLD_PRICE' => 0,
+            ],
+            [
+                'PROPERTY_TAGS' => false,
+            ],
+            [
+                '!PROPERTY_TAGS' => false,
+            ],
+            [
+                [
+                    'LOGIC' => 'OR',
+                    'PROPERTY_TAGS' => false,
+                    'PROPERTY_OLD_PRICE' => false,
+                ]
+            ],
+            [
+                [
+                    'LOGIC' => 'OR',
+                    '!PROPERTY_TAGS' => false,
+                    '!PROPERTY_OLD_PRICE' => false,
+                ]
+            ]
         ];
 
         foreach ($filters as $filter) {
@@ -755,7 +792,8 @@ class IndexerTest extends TestCase
 
             $this->assertSame(
                 array_slice($bitrixIds, 0, 20),
-                array_slice($elasticIds, 0, 20)
+                array_slice($elasticIds, 0, 20),
+                'Результат отличается для фильтра ' . json_encode($filter) . '.'
             );
         }
 
