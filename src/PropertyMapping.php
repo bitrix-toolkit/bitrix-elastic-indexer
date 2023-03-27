@@ -41,15 +41,10 @@ class PropertyMapping implements JsonSerializable
         'SEARCHABLE_CONTENT' => ['keyword'],
         'TAGS' => ['keyword'],
     ];
-    /**
-     * @var ArrayObject
-     */
+
+    /** @var ArrayObject */
     private $data;
 
-    /**
-     * @param string $type
-     * @param array $parameters
-     */
     public function __construct(string $type = 'keyword', array $parameters = [])
     {
         $this->data = new ArrayObject($parameters);
@@ -57,10 +52,9 @@ class PropertyMapping implements JsonSerializable
     }
 
     /**
-     * @param array $property
-     * @return PropertyMapping
+     * @throws InvalidArgumentException
      */
-    public static function fromBitrixProperty(array $property)
+    public static function fromBitrixProperty(array $property): self
     {
         if (empty($property['PROPERTY_TYPE'])) {
             throw new InvalidArgumentException('PROPERTY_TYPE должен быть определён в массиве $property.');
@@ -80,14 +74,13 @@ class PropertyMapping implements JsonSerializable
             $indexType = 'keyword';
         }
 
-        return new self($indexType, isset($parameters) ? $parameters : []);
+        return new self($indexType, $parameters ?? []);
     }
 
     /**
-     * @param string $field
-     * @return PropertyMapping
+     * @throws InvalidArgumentException
      */
-    public static function fromBitrixField(string $field)
+    public static function fromBitrixField(string $field): self
     {
         if (!array_key_exists($field, self::$bitrixFieldTypesMap)) {
             throw new InvalidArgumentException('Для поля ' . $field . ' не предопределён тип.');
@@ -98,17 +91,26 @@ class PropertyMapping implements JsonSerializable
         return new self($indexType, $indexParameters);
     }
 
-    /**
-     * @param string $parameter
-     * @param mixed $value
-     */
-    public function set(string $parameter, $value)
+    public function set(string $parameter, $value): void
     {
         $this->data[$parameter] = $value;
     }
 
     /**
-     * @param mixed $value
+     * @return mixed
+     */
+    public function get(string $parameter)
+    {
+        return $this->data[$parameter];
+    }
+
+    public function getData(): ArrayObject
+    {
+        return $this->data;
+    }
+
+    /**
+     * @throws InvalidArgumentException
      * @return mixed
      */
     public function normalizeValue($value)
@@ -141,7 +143,7 @@ class PropertyMapping implements JsonSerializable
                 }
 
                 $format = 'Y-m-d H:i:s';
-                if (is_string($value) && preg_match('/^\d{2,4}[-.]\d{2}[-.]\d{2,4}$/uis', $value)) {
+                if (is_string($value) && preg_match('/^\d{2,4}[-.]\d{2}[-.]\d{2,4}$/ui', $value)) {
                     $format = 'Y-m-d';
                 }
 
@@ -149,7 +151,7 @@ class PropertyMapping implements JsonSerializable
                     return $value->format($format);
                 } elseif ($value instanceof DateTime) {
                     return $value->format($format);
-                } elseif (preg_match('/^-?\d+$/us', (string)$value)) {
+                } elseif (preg_match('/^-?\d+$/u', (string)$value)) {
                     return date($format, $value);
                 } else {
                     return (new DateTime($value))->format($format);
@@ -164,38 +166,19 @@ class PropertyMapping implements JsonSerializable
     }
 
     /**
-     * @param string $parameter
-     * @return mixed
-     */
-    public function get(string $parameter)
-    {
-        return $this->data[$parameter];
-    }
-
-    /**
-     * @return ArrayObject
-     */
-    public function getData()
-    {
-        return $this->data;
-    }
-
-    /**
      * Specify data which should be serialized to JSON
      * @link https://php.net/manual/en/jsonserializable.jsonserialize.php
      * @return mixed data which can be serialized by <b>json_encode</b>,
      * which is a value of any type other than a resource.
      * @since 5.4.0
+     * @noinspection PhpReturnDocTypeMismatchInspection
      */
     public function jsonSerialize()
     {
         return $this->data->getArrayCopy();
     }
 
-    /**
-     * @return array
-     */
-    public function toArray()
+    public function toArray(): array
     {
         return json_decode(json_encode($this), true);
     }

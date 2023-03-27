@@ -7,9 +7,7 @@ use JsonSerializable;
 
 class IndexMapping implements JsonSerializable
 {
-    /**
-     * @var ArrayObject
-     */
+    /** @var ArrayObject<PropertyMapping> */
     private $properties;
 
     public function __construct()
@@ -18,27 +16,19 @@ class IndexMapping implements JsonSerializable
     }
 
     /**
-     * @return ArrayObject|PropertyMapping[]
+     * @return ArrayObject<PropertyMapping>
      */
-    public function getProperties()
+    public function getProperties(): ArrayObject
     {
         return $this->properties;
     }
 
-    /**
-     * @param string $code
-     * @param PropertyMapping $propertyMapping
-     */
-    public function setProperty(string $code, PropertyMapping $propertyMapping)
+    public function setProperty(string $code, PropertyMapping $propertyMapping): void
     {
         $this->properties[$code] = $propertyMapping;
     }
 
-    /**
-     * @param string $code
-     * @return PropertyMapping
-     */
-    public function getProperty(string $code)
+    public function getProperty(string $code): PropertyMapping
     {
         return $this->properties[$code];
     }
@@ -49,6 +39,7 @@ class IndexMapping implements JsonSerializable
      * @return mixed data which can be serialized by <b>json_encode</b>,
      * which is a value of any type other than a resource.
      * @since 5.4.0
+     * @noinspection PhpReturnDocTypeMismatchInspection
      */
     public function jsonSerialize()
     {
@@ -57,10 +48,7 @@ class IndexMapping implements JsonSerializable
         ];
     }
 
-    /**
-     * @return array
-     */
-    public function toArray()
+    public function toArray(): array
     {
         return json_decode(json_encode($this), true);
     }

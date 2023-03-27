@@ -1,6 +1,7 @@
 <?php
 
 /** @noinspection PhpParamsInspection */
+/** @noinspection PhpUnhandledExceptionInspection */
 
 namespace Sheerockoff\BitrixElastic\Test;
 
@@ -20,11 +21,15 @@ use CIBlockType;
 use CPrice;
 use DateTime;
 use Elasticsearch\Client;
+use Exception;
 use InvalidArgumentException;
 use ReflectionException;
 use ReflectionObject;
+use Sheerockoff\BitrixElastic\Finder;
 use Sheerockoff\BitrixElastic\Indexer;
 use Sheerockoff\BitrixElastic\IndexMapping;
+use Sheerockoff\BitrixElastic\Keeper;
+use Sheerockoff\BitrixElastic\Mapper;
 use Sheerockoff\BitrixElastic\PropertyMapping;
 
 class IndexerTest extends TestCase
@@ -307,6 +312,16 @@ class IndexerTest extends TestCase
         }
     }
 
+    public function testCanInstantiateIndexer()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->assertInstanceOf(Indexer::class, $indexer);
+        $this->assertInstanceOf(Client::class, $indexer->getElastic());
+        $this->assertInstanceOf(Mapper::class, $indexer->getMapper());
+        $this->assertInstanceOf(Keeper::class, $indexer->getKeeper());
+        $this->assertInstanceOf(Finder::class, $indexer->getFinder());
+    }
+
     /**
      * @return array
      */
@@ -351,6 +366,7 @@ class IndexerTest extends TestCase
         $stack['basePriceType'] = $basePriceType;
         $stack['indexer'] = $indexer;
         $stack['mapping'] = $mapping;
+
         return $stack;
     }
 
@@ -497,10 +513,8 @@ class IndexerTest extends TestCase
 
     /**
      * @depends testCanGetInfoblockMapping
-     * @param array $stack
-     * @return array
      */
-    public function testCanPutIndexMapping(array $stack = [])
+    public function testCanPutIndexMapping(array $stack): array
     {
         /** @var Indexer $indexer */
         $indexer = $stack['indexer'];
@@ -532,8 +546,30 @@ class IndexerTest extends TestCase
 
     /**
      * @depends testCanPutIndexMapping
+     */
+    public function testCanGetCachedMapping(array $stack): array
+    {
+        /** @var Indexer $indexer */
+        $indexer = $stack['indexer'];
+        $cachedMapping = $indexer->getCachedMapping('test_products');
+        $this->assertInstanceOf(IndexMapping::class, $cachedMapping);
+        $existMapping = $indexer->getMapping('test_products');
+        $this->assertInstanceOf(IndexMapping::class, $existMapping);
+        foreach ($existMapping->getProperties()->getArrayCopy() as $property => $propertyMap) {
+            $this->assertEquals(
+                $propertyMap->getData()->getArrayCopy(),
+                $cachedMapping->getProperty($property)->getData()->getArrayCopy()
+            );
+        }
+
+        return $stack;
+    }
+
+    /**
+     * @depends testCanPutIndexMapping
      * @param array $stack
      * @return array
+     * @throws Exception
      */
     public function testCanPutIndexMappingWithManyProperties(array $stack = [])
     {
@@ -547,10 +583,11 @@ class IndexerTest extends TestCase
         $mapping = new IndexMapping();
         $indexer->putMapping('test_limit', $mapping);
 
-        $indexerRef = new ReflectionObject($indexer);
-        $getMappingTotalFieldsLimitRef = $indexerRef->getMethod('getMappingTotalFieldsLimit');
+        $mapper = $indexer->getMapper();
+        $mapperRef = new ReflectionObject($mapper);
+        $getMappingTotalFieldsLimitRef = $mapperRef->getMethod('getMappingTotalFieldsLimit');
         $getMappingTotalFieldsLimitRef->setAccessible(true);
-        $limit = $getMappingTotalFieldsLimitRef->invoke($indexer, 'test_limit');
+        $limit = $getMappingTotalFieldsLimitRef->invoke($mapper, 'test_limit');
         $getMappingTotalFieldsLimitRef->setAccessible(false);
 
         foreach (range(1, $limit) as $i) {
@@ -623,10 +660,34 @@ class IndexerTest extends TestCase
 
     /**
      * @depends testCanGetInfoblockMapping
+     */
+    public function testCanPrefabElasticParams(array $stack): array
+    {
+        /** @var Indexer $indexer */
+        $indexer = $stack['indexer'];
+
+        $params = $indexer->prefabElasticSearchParams(
+            'test_products',
+            ['>PROPERTY_OLD_PRICE' => 0],
+            ['ID' => 'ASC'],
+            ['size' => 1]
+        );
+
+        $this->assertEquals('test_products', $params['index']);
+        $this->assertNotEmpty($params['body']['query']);
+        $this->assertNotEmpty($params['body']['sort']);
+        $this->assertNotEmpty($params['size']);
+
+        return $stack;
+    }
+
+    /**
+     * @depends testCanGetInfoblockMapping
      * @param array $stack
+     * @throws Exception
      * @return array
      */
-    public function testCanSearch(array $stack = [])
+    public function testCanSearch(array $stack = []): array
     {
         sleep(1);
 
@@ -678,6 +739,9 @@ class IndexerTest extends TestCase
                 'PROPERTY_COLOR_VALUE' => 'Silver',
             ],
             [
+                '!PROPERTY_COLOR_VALUE' => 'Silver',
+            ],
+            [
                 'PROPERTY_COLOR' => $silverColorEnum['ID'],
             ],
             [
@@ -707,6 +771,34 @@ class IndexerTest extends TestCase
                 [
                     'LOGIC' => 'OR',
                     // Без условий.
+                ],
+            ],
+            [
+                [
+                    'LOGIC' => 'OR',
+                    '>PROPERTY_OLD_PRICE' => 0,
+                    '<CATALOG_PRICE_' . $basePriceId => 10000,
+                ],
+            ],
+            [
+                [
+                    'LOGIC' => 'OR',
+                    '>=PROPERTY_OLD_PRICE' => 14999,
+                    '<=CATALOG_PRICE_' . $basePriceId => 9999,
+                ],
+            ],
+            [
+                [
+                    'LOGIC' => 'OR',
+                    '><CATALOG_PRICE_' . $basePriceId => [0, 10000],
+                    '><PROPERTY_OLD_PRICE' => [10000, 20000],
+                ],
+            ],
+            [
+                [
+                    'LOGIC' => 'OR',
+                    'NAME' => 'Ultrabook 13',
+                    '%NAME' => 'Gaming',
                 ],
             ],
             [
@@ -913,10 +1005,24 @@ class IndexerTest extends TestCase
         $indexer->search('test_products', ['><PROPERTY_OLD_PRICE' => [20000]]);
     }
 
+    public function testExceptOnWrongBetweenFilterOr()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', [['LOGIC' => 'OR', '><PROPERTY_OLD_PRICE' => [20000]]]);
+    }
+
     public function testNotStrictModeOnWrongBetweenFilter()
     {
         $indexer = new Indexer(self::getElasticClient(), false);
         $result = $indexer->search('test_products', ['><PROPERTY_OLD_PRICE' => [20000]]);
+        $this->assertNotEmpty($result['hits']['hits']);
+    }
+
+    public function testNotStrictModeOnWrongBetweenFilterOr()
+    {
+        $indexer = new Indexer(self::getElasticClient(), false);
+        $result = $indexer->search('test_products', [['LOGIC' => 'OR', '><PROPERTY_OLD_PRICE' => [20000]]]);
         $this->assertNotEmpty($result['hits']['hits']);
     }
 
@@ -927,10 +1033,24 @@ class IndexerTest extends TestCase
         $indexer->search('test_products', ['' => 'WRONG KEY']);
     }
 
+    public function testExceptOnNormalizeWrongFilterKeyOr()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', [['LOGIC' => 'OR', '' => 'WRONG KEY']]);
+    }
+
     public function testNotStrictModeOnNormalizeWrongFilterKey()
     {
         $indexer = new Indexer(self::getElasticClient(), false);
         $result = $indexer->search('test_products', ['' => 'WRONG KEY']);
+        $this->assertNotEmpty($result['hits']['hits']);
+    }
+
+    public function testNotStrictModeOnNormalizeWrongFilterKeyOr()
+    {
+        $indexer = new Indexer(self::getElasticClient(), false);
+        $result = $indexer->search('test_products', [['LOGIC' => 'OR', '' => 'WRONG KEY']]);
         $this->assertNotEmpty($result['hits']['hits']);
     }
 
@@ -940,15 +1060,16 @@ class IndexerTest extends TestCase
     public function testExceptOnNormalizeAliasWithoutPathFilter()
     {
         $indexer = new Indexer(self::getElasticClient());
-        $indexerRef = new ReflectionObject($indexer);
-        $normalizeFilterRef = $indexerRef->getMethod('normalizeFilter');
+        $finder = $indexer->getFinder();
+        $finderRef = new ReflectionObject($finder);
+        $normalizeFilterRef = $finderRef->getMethod('normalizeFilter');
 
         $mapping = new IndexMapping();
         $mapping->setProperty('PROPERTY_ALIAS', new PropertyMapping('alias'));
 
         $normalizeFilterRef->setAccessible(true);
         $this->expectException(InvalidArgumentException::class);
-        $normalizeFilterRef->invoke($indexer, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
+        $normalizeFilterRef->invoke($finder, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
     }
 
     /**
@@ -957,14 +1078,15 @@ class IndexerTest extends TestCase
     public function testNotStrictModeOnNormalizeAliasWithoutPathFilter()
     {
         $indexer = new Indexer(self::getElasticClient(), false);
-        $indexerRef = new ReflectionObject($indexer);
-        $normalizeFilterRef = $indexerRef->getMethod('normalizeFilter');
+        $finder = $indexer->getFinder();
+        $finderRef = new ReflectionObject($finder);
+        $normalizeFilterRef = $finderRef->getMethod('normalizeFilter');
 
         $mapping = new IndexMapping();
         $mapping->setProperty('PROPERTY_ALIAS', new PropertyMapping('alias'));
 
         $normalizeFilterRef->setAccessible(true);
-        $normalizedFilter = $normalizeFilterRef->invoke($indexer, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
+        $normalizedFilter = $normalizeFilterRef->invoke($finder, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
         $this->assertArrayNotHasKey('PROPERTY_ALIAS', $normalizedFilter);
     }
 
@@ -974,15 +1096,16 @@ class IndexerTest extends TestCase
     public function testExceptOnNormalizeAliasWithWrongPathFilter()
     {
         $indexer = new Indexer(self::getElasticClient());
-        $indexerRef = new ReflectionObject($indexer);
-        $normalizeFilterRef = $indexerRef->getMethod('normalizeFilter');
+        $finder = $indexer->getFinder();
+        $finderRef = new ReflectionObject($finder);
+        $normalizeFilterRef = $finderRef->getMethod('normalizeFilter');
 
         $mapping = new IndexMapping();
         $mapping->setProperty('PROPERTY_ALIAS', new PropertyMapping('alias', ['path' => 'PROPERTY_UNDEFINED']));
 
         $normalizeFilterRef->setAccessible(true);
         $this->expectException(InvalidArgumentException::class);
-        $normalizeFilterRef->invoke($indexer, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
+        $normalizeFilterRef->invoke($finder, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
     }
 
     /**
@@ -991,14 +1114,15 @@ class IndexerTest extends TestCase
     public function testNotStrictModeOnNormalizeAliasWithWrongPathFilter()
     {
         $indexer = new Indexer(self::getElasticClient(), false);
-        $indexerRef = new ReflectionObject($indexer);
-        $normalizeFilterRef = $indexerRef->getMethod('normalizeFilter');
+        $finder = $indexer->getFinder();
+        $finderRef = new ReflectionObject($finder);
+        $normalizeFilterRef = $finderRef->getMethod('normalizeFilter');
 
         $mapping = new IndexMapping();
         $mapping->setProperty('PROPERTY_ALIAS', new PropertyMapping('alias', ['path' => 'PROPERTY_UNDEFINED']));
 
         $normalizeFilterRef->setAccessible(true);
-        $normalizedFilter = $normalizeFilterRef->invoke($indexer, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
+        $normalizedFilter = $normalizeFilterRef->invoke($finder, $mapping, ['PROPERTY_ALIAS' => 'VALUE']);
         $this->assertArrayNotHasKey('PROPERTY_ALIAS', $normalizedFilter);
     }
 
@@ -1008,11 +1132,12 @@ class IndexerTest extends TestCase
     public function testExceptOnPrepareWrongFilterKey()
     {
         $indexer = new Indexer(self::getElasticClient());
-        $indexerRef = new ReflectionObject($indexer);
-        $prepareFilterQueryRef = $indexerRef->getMethod('prepareFilterQuery');
+        $finder = $indexer->getFinder();
+        $finderRef = new ReflectionObject($finder);
+        $prepareFilterQueryRef = $finderRef->getMethod('prepareFilterQuery');
         $prepareFilterQueryRef->setAccessible(true);
         $this->expectException(InvalidArgumentException::class);
-        $prepareFilterQueryRef->invoke($indexer, ['' => 'WRONG KEY']);
+        $prepareFilterQueryRef->invoke($finder, ['' => 'WRONG KEY']);
     }
 
     /**
@@ -1021,10 +1146,11 @@ class IndexerTest extends TestCase
     public function testNotStrictModeOnPrepareWrongFilterKey()
     {
         $indexer = new Indexer(self::getElasticClient(), false);
-        $indexerRef = new ReflectionObject($indexer);
-        $prepareFilterQueryRef = $indexerRef->getMethod('prepareFilterQuery');
+        $finder = $indexer->getFinder();
+        $finderRef = new ReflectionObject($finder);
+        $prepareFilterQueryRef = $finderRef->getMethod('prepareFilterQuery');
         $prepareFilterQueryRef->setAccessible(true);
-        $preparedFilter = $prepareFilterQueryRef->invoke($indexer, ['' => 'WRONG KEY']);
+        $preparedFilter = $prepareFilterQueryRef->invoke($finder, ['' => 'WRONG KEY']);
         $this->assertArrayHasKey('match_all', $preparedFilter);
     }
 
@@ -1032,13 +1158,27 @@ class IndexerTest extends TestCase
     {
         $indexer = new Indexer(self::getElasticClient());
         $this->expectException(InvalidArgumentException::class);
-        $indexer->search('test_products', ['@PROPERTY_COLOR' => 'WRONG_OPERATOR']);
+        $indexer->search('test_products', ['&PROPERTY_COLOR' => 'WRONG_OPERATOR']);
+    }
+
+    public function testExceptOnWrongFilterOperatorOr()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', [['LOGIC' => 'OR', '&PROPERTY_COLOR' => 'WRONG_OPERATOR']]);
     }
 
     public function testNotStrictModeOnWrongFilterOperator()
     {
         $indexer = new Indexer(self::getElasticClient(), false);
-        $result = $indexer->search('test_products', ['@PROPERTY_COLOR' => 'WRONG_OPERATOR']);
+        $result = $indexer->search('test_products', ['&PROPERTY_COLOR' => 'WRONG_OPERATOR']);
+        $this->assertNotEmpty($result['hits']['hits']);
+    }
+
+    public function testNotStrictModeOnWrongFilterOperatorOr()
+    {
+        $indexer = new Indexer(self::getElasticClient(), false);
+        $result = $indexer->search('test_products', [['LOGIC' => 'OR', '&PROPERTY_COLOR' => 'WRONG_OPERATOR']]);
         $this->assertNotEmpty($result['hits']['hits']);
     }
 
@@ -1061,6 +1201,13 @@ class IndexerTest extends TestCase
         $indexer = new Indexer(self::getElasticClient());
         $this->expectException(InvalidArgumentException::class);
         $indexer->search('test_products', [], ['UNDEFINED_PROPERTY' => 'ASC']);
+    }
+
+    public function testExceptOnUndefinedLogic()
+    {
+        $indexer = new Indexer(self::getElasticClient());
+        $this->expectException(InvalidArgumentException::class);
+        $indexer->search('test_products', [['LOGIC' => 'UNDEFINED_LOGIC', 'PROPERTY_COLOR' => 'red']]);
     }
 
     public function testNotStrictModeOnSortByUndefinedProperty()

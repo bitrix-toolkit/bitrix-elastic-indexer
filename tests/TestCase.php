@@ -16,14 +16,11 @@ abstract class TestCase extends PhpUnitTestCase
      */
     protected $backupGlobals = false;
 
-    /**
-     * @return Client
-     */
-    public static function getElasticClient()
+    public static function getElasticClient(): Client
     {
         $hosts = getenv('ELASTICSEARCH_HOSTS', true) ?: getenv('ELASTICSEARCH_HOSTS');
         $hosts = explode(',', $hosts);
-        $elastic = ClientBuilder::create()->setHosts($hosts)->build();
-        return $elastic;
+
+        return ClientBuilder::create()->setHosts($hosts)->build();
     }
 }
