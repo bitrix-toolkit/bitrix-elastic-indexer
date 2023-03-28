@@ -179,13 +179,13 @@ class Finder
                 continue;
             }
 
-            $emptySort = null;
+            $missing = null;
             if (preg_match('/(?<first>nulls\s*,\s*)?(?<dir>asc|desc)(?<last>\s*,\s*nulls)?/ui', $term, $matches)) {
                 $sortOrder = strtolower($matches['dir']);
                 if (!empty($matches['first'])) {
-                    $emptySort = 'asc';
+                    $missing = '_first';
                 } elseif (!empty($matches['last'])) {
-                    $emptySort = 'desc';
+                    $missing = '_last';
                 }
             } else {
                 if ($this->strictMode) throw new InvalidArgumentException("Неверный формат сортировки ($term).");
@@ -199,35 +199,11 @@ class Finder
                 $sortField = $property;
             }
 
-            if ($emptySort) {
-                $emptyValuesForTypes = [
-                    'integer' => '0',
-                    'long' => '0',
-                    'float' => '0.0',
-                    'double' => '0.0',
-                    'date' => 'null',
-                    'boolean' => 'false',
-                    'string' => '',
-                ];
-
-                $elasticSorts[] = [
-                    '_script' => [
-                        'type' => 'number',
-                        'script' => [
-                            'lang' => 'painless',
-                            'source' => sprintf(
-                                "if (doc['%s'].empty || doc['%s'].value == %s) { return 0; } else { return 1; }",
-                                $sortField,
-                                $sortField,
-                                $emptyValuesForTypes[$propMap->get('type')] ?? 'null'
-                            )
-                        ],
-                        'order' => $emptySort
-                    ]
-                ];
+            if (isset($missing)) {
+                $elasticSorts[] = [$sortField => ['order' => $sortOrder, 'missing' => $missing]];
+            } else {
+                $elasticSorts[] = [$sortField => ['order' => $sortOrder]];
             }
-
-            $elasticSorts[] = [$sortField => ['order' => $sortOrder]];
         }
 
         return $elasticSorts ? ['sort' => $elasticSorts] : [];

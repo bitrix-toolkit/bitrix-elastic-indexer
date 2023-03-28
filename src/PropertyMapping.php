@@ -135,7 +135,7 @@ class PropertyMapping implements JsonSerializable
                 return is_numeric($value) ? floatval($value) : null;
             },
             'boolean' => function ($value) {
-                return $value && $value !== 'N';
+                return $value !== null ? $value && $value !== 'N' : null;
             },
             'date' => function ($value) {
                 if (empty($value)) {
