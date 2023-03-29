@@ -117,10 +117,10 @@ class PropertyMapping implements JsonSerializable
     {
         $map = [
             'keyword' => function ($value) {
-                return $value !== null && $value !== false ? strval($value) : null;
+                return $value !== null && $value !== false && $value !== '' ? strval($value) : null;
             },
             'text' => function ($value) {
-                return $value !== null && $value !== false ? strval($value) : null;
+                return $value !== null && $value !== false && $value !== '' ? strval($value) : null;
             },
             'integer' => function ($value) {
                 return is_numeric($value) ? intval($value) : null;
@@ -135,7 +135,7 @@ class PropertyMapping implements JsonSerializable
                 return is_numeric($value) ? floatval($value) : null;
             },
             'boolean' => function ($value) {
-                return $value !== null ? $value && $value !== 'N' : null;
+                return $value !== null ? $value && strtoupper($value) !== 'N' : null;
             },
             'date' => function ($value) {
                 if (empty($value)) {

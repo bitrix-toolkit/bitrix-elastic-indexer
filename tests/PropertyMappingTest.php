@@ -185,14 +185,14 @@ class PropertyMappingTest extends TestCase
         $propertyMap = new PropertyMapping('text');
         $this->assertSame('100', $propertyMap->normalizeValue(100));
         $this->assertSame('0', $propertyMap->normalizeValue(0));
-        $this->assertSame('', $propertyMap->normalizeValue(''));
+        $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(null));
         $this->assertSame(null, $propertyMap->normalizeValue(false));
 
         $propertyMap = new PropertyMapping('keyword');
         $this->assertSame('200', $propertyMap->normalizeValue(200));
         $this->assertSame('0', $propertyMap->normalizeValue(0));
-        $this->assertSame('', $propertyMap->normalizeValue(''));
+        $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(null));
         $this->assertSame(null, $propertyMap->normalizeValue(false));
 

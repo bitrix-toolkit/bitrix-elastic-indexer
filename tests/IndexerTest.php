@@ -255,6 +255,7 @@ class IndexerTest extends TestCase
                 'IBLOCK_ID' => $iBlockId,
                 'IBLOCK_SECTION' => $sectionIds,
                 'NAME' => $row['NAME'],
+                'DETAIL_TEXT' => $row['DESCRIPTION'],
                 'PREVIEW_PICTURE' => CFile::MakeFileArray(__DIR__ . '/' . $row['IMAGE']),
                 'DETAIL_PICTURE' => CFile::MakeFileArray(__DIR__ . '/' . $row['IMAGE']),
                 'PROPERTY_VALUES' => [
@@ -845,6 +846,12 @@ class IndexerTest extends TestCase
             ],
             [
                 '!PROPERTY_TAGS' => false,
+            ],
+            [
+                'DETAIL_TEXT' => false,
+            ],
+            [
+                '!DETAIL_TEXT' => false,
             ],
             [
                 [
