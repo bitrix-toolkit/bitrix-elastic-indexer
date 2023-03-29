@@ -96,7 +96,7 @@ class Keeper
                 continue;
             }
 
-            $rawValue = $data[$key] ?: null;
+            $rawValue = $data[$key] ?? null;
 
             if (is_array($rawValue) && array_key_exists('TEXT', $rawValue)) {
                 $rawValue = $rawValue['TEXT'];

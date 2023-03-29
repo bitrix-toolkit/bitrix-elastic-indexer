@@ -1,6 +1,7 @@
 <?php
 
 /** @noinspection PhpParamsInspection */
+/** @noinspection PhpMissingReturnTypeInspection */
 /** @noinspection PhpUnhandledExceptionInspection */
 
 namespace Sheerockoff\BitrixElastic\Test;

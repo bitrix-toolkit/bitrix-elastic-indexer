@@ -7,7 +7,7 @@ use JsonSerializable;
 
 class IndexMapping implements JsonSerializable
 {
-    /** @var ArrayObject<PropertyMapping> */
+    /** @var ArrayObject|PropertyMapping[] */
     private $properties;
 
     public function __construct()
@@ -16,7 +16,7 @@ class IndexMapping implements JsonSerializable
     }
 
     /**
-     * @return ArrayObject<PropertyMapping>
+     * @return ArrayObject|PropertyMapping[]
      */
     public function getProperties(): ArrayObject
     {
