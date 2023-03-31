@@ -866,6 +866,16 @@ class IndexerTest extends TestCase
                     '!PROPERTY_TAGS' => false,
                     '!PROPERTY_OLD_PRICE' => false,
                 ]
+            ],
+            [
+                // Пример числа с табуляцией в конце из реального проекта.
+                'PROPERTY_OLD_PRICE' => "14999\t",
+            ],
+            [
+                'PROPERTY_OLD_PRICE' => [
+                    "\t 12999.00  ",
+                    " 14999",
+                ],
             ]
         ];
 

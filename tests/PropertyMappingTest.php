@@ -199,6 +199,7 @@ class PropertyMappingTest extends TestCase
         $propertyMap = new PropertyMapping('integer');
         $this->assertSame(99, $propertyMap->normalizeValue(99.00));
         $this->assertSame(0, $propertyMap->normalizeValue('0'));
+        $this->assertSame(999, $propertyMap->normalizeValue(" 999\t"));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(null));
@@ -207,6 +208,7 @@ class PropertyMappingTest extends TestCase
         $propertyMap = new PropertyMapping('long');
         $this->assertSame(99, $propertyMap->normalizeValue('99.00'));
         $this->assertSame(0, $propertyMap->normalizeValue('0'));
+        $this->assertSame(999, $propertyMap->normalizeValue(" 999\t"));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(null));
@@ -215,6 +217,7 @@ class PropertyMappingTest extends TestCase
         $propertyMap = new PropertyMapping('float');
         $this->assertSame(99.00, $propertyMap->normalizeValue(99));
         $this->assertSame(0.00, $propertyMap->normalizeValue('0'));
+        $this->assertSame(999.00, $propertyMap->normalizeValue(" 999.0\t"));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(null));
@@ -223,6 +226,7 @@ class PropertyMappingTest extends TestCase
         $propertyMap = new PropertyMapping('double');
         $this->assertSame(99.00, $propertyMap->normalizeValue('99.0'));
         $this->assertSame(0.00, $propertyMap->normalizeValue('0'));
+        $this->assertSame(999.00, $propertyMap->normalizeValue(" 999.00\t"));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
         $this->assertSame(null, $propertyMap->normalizeValue(null));
@@ -233,6 +237,7 @@ class PropertyMappingTest extends TestCase
         $this->assertSame(true, $propertyMap->normalizeValue(1));
         $this->assertSame(true, $propertyMap->normalizeValue(true));
         $this->assertSame(false, $propertyMap->normalizeValue('N'));
+        $this->assertSame(false, $propertyMap->normalizeValue("\t N "));
         $this->assertSame(false, $propertyMap->normalizeValue(0));
         $this->assertSame(false, $propertyMap->normalizeValue(false));
         $this->assertSame(false, $propertyMap->normalizeValue(''));
@@ -243,6 +248,7 @@ class PropertyMappingTest extends TestCase
         $this->assertSame(null, $propertyMap->normalizeValue(false));
         $this->assertSame(null, $propertyMap->normalizeValue(0));
         $this->assertSame(null, $propertyMap->normalizeValue(''));
+        $this->assertSame(null, $propertyMap->normalizeValue(' '));
         $this->assertSame('2019-06-14 12:30:01', $propertyMap->normalizeValue('14.06.2019 12:30:01'));
         $this->assertSame('2015-02-21', $propertyMap->normalizeValue('2015-02-21'));
         $this->assertSame('2015-02-21', $propertyMap->normalizeValue('21.02.2015'));

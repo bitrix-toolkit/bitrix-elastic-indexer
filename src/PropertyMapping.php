@@ -123,21 +123,28 @@ class PropertyMapping implements JsonSerializable
                 return $value !== null && $value !== false && $value !== '' ? strval($value) : null;
             },
             'integer' => function ($value) {
+                $value = is_string($value) ? trim($value) : $value;
                 return is_numeric($value) ? intval($value) : null;
             },
             'long' => function ($value) {
+                $value = is_string($value) ? trim($value) : $value;
                 return is_numeric($value) ? intval($value) : null;
             },
             'float' => function ($value) {
+                $value = is_string($value) ? trim($value) : $value;
                 return is_numeric($value) ? floatval($value) : null;
             },
             'double' => function ($value) {
+                $value = is_string($value) ? trim($value) : $value;
                 return is_numeric($value) ? floatval($value) : null;
             },
             'boolean' => function ($value) {
+                $value = is_string($value) ? trim($value) : $value;
                 return $value !== null ? $value && strtoupper($value) !== 'N' : null;
             },
             'date' => function ($value) {
+                $value = is_string($value) ? trim($value) : $value;
+
                 if (empty($value)) {
                     return null;
                 }
