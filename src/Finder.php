@@ -112,11 +112,14 @@ class Finder
     {
         $normalizedFilter = [];
         foreach ($filter as $k => $v) {
-            if (is_array($v) && array_key_exists('LOGIC', $v)) {
+            if (is_array($v) && (array_key_exists('LOGIC', $v) || is_numeric($k))) {
                 $subFilter = $v;
-                unset($subFilter['LOGIC']);
+                if (array_key_exists('LOGIC', $subFilter)) {
+                    unset($subFilter['LOGIC']);
+                }
+
                 $subFilter = $this->normalizeFilter($mapping, $subFilter);
-                $normalizedFilter[$k] = array_merge(['LOGIC' => $v['LOGIC']], $subFilter);
+                $normalizedFilter[$k] = array_merge(['LOGIC' => $v['LOGIC'] ?? self::LOGIC_AND], $subFilter);
                 continue;
             }
 
@@ -219,15 +222,18 @@ class Finder
         }
 
         $terms = [];
-        foreach ($filter as $k => $value) {
-            if (is_array($value) && array_key_exists('LOGIC', $value)) {
+        foreach ($filter as $key => $value) {
+            if (is_array($value) && (array_key_exists('LOGIC', $value) || is_numeric($key))) {
                 $subFilter = $value;
-                unset($subFilter['LOGIC']);
-                $subQuery = $this->prepareFilterQuery($subFilter, strtoupper($value['LOGIC']));
+                if (array_key_exists('LOGIC', $subFilter)) {
+                    unset($subFilter['LOGIC']);
+                }
+
+                $subQuery = $this->prepareFilterQuery($subFilter, strtoupper($value['LOGIC'] ?? self::LOGIC_AND));
                 $terms = array_merge_recursive($terms, [($logic === self::LOGIC_OR ? 'should' : 'must') => [$subQuery]]);
             } else {
-                if (!preg_match('/^(?<operator>\W*)(?<field>\w+)$/ui', $k, $matches)) {
-                    if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+                if (!preg_match('/^(?<operator>\W*)(?<field>\w+)$/ui', $key, $matches)) {
+                    if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($key).");
                     continue;
                 }
 
