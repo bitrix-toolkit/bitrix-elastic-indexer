@@ -62,7 +62,7 @@ class Finder
                 continue;
             }
 
-            if ($matches['property'] !== 'INCLUDE_SUBSECTIONS') {
+            if (strtoupper($matches['property']) !== 'INCLUDE_SUBSECTIONS') {
                 continue;
             }
 
@@ -79,7 +79,7 @@ class Finder
                 continue;
             }
 
-            if ($matches['property'] === 'IBLOCK_SECTION_ID' || $matches['property'] === 'SECTION_ID') {
+            if (strtoupper($matches['property']) === 'IBLOCK_SECTION_ID' || strtoupper($matches['property']) === 'SECTION_ID') {
                 if (array_key_exists($key, $changedFilter)) {
                     unset($changedFilter[$key]);
                 }
@@ -89,7 +89,7 @@ class Finder
                 } else {
                     $changedFilter['GROUP_IDS'] = $rawValue;
                 }
-            } elseif ($matches['property'] === 'SECTION_CODE') {
+            } elseif (strtoupper($matches['property']) === 'SECTION_CODE') {
                 if (array_key_exists($key, $changedFilter)) {
                     unset($changedFilter[$key]);
                 }
@@ -111,24 +111,25 @@ class Finder
     private function normalizeFilter(IndexMapping $mapping, array $filter): array
     {
         $normalizedFilter = [];
-        foreach ($filter as $k => $v) {
-            if (is_array($v) && (array_key_exists('LOGIC', $v) || is_numeric($k))) {
-                $subFilter = $v;
+        foreach ($filter as $field => $value) {
+            if (is_array($value) && (array_key_exists('LOGIC', $value) || is_numeric($field))) {
+                $subFilter = $value;
                 if (array_key_exists('LOGIC', $subFilter)) {
                     unset($subFilter['LOGIC']);
                 }
 
                 $subFilter = $this->normalizeFilter($mapping, $subFilter);
-                $normalizedFilter[$k] = array_merge(['LOGIC' => $v['LOGIC'] ?? self::LOGIC_AND], $subFilter);
+                $normalizedFilter[$field] = array_merge(['LOGIC' => $value['LOGIC'] ?? self::LOGIC_AND], $subFilter);
                 continue;
             }
 
-            if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/ui', $k, $matches)) {
-                if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($k).");
+            if (!preg_match('/^(?<operator>\W*)(?<property>\w+)$/ui', $field, $matches)) {
+                if ($this->strictMode) throw new InvalidArgumentException("Неверный ключ фильтра ($field).");
                 continue;
             }
 
-            $property = $matches['property'];
+            $property = $mapping->normalizePropertyCode($matches['property']);
+            $field = ($matches['operator'] ?? '') . $property;
 
             if (!$mapping->getProperties()->offsetExists($property)) {
                 if ($this->strictMode) throw new InvalidArgumentException("$property не найден в карте индекса.");
@@ -156,15 +157,15 @@ class Finder
                 $property = $aliasPath;
             }
 
-            if (is_array($v)) {
+            if (is_array($value)) {
                 $value = array_map(function ($v) use ($mapping, $property) {
                     return $mapping->getProperty($property)->normalizeValue($v);
-                }, $v);
+                }, $value);
             } else {
-                $value = $mapping->getProperty($property)->normalizeValue($v);
+                $value = $mapping->getProperty($property)->normalizeValue($value);
             }
 
-            $normalizedFilter[$k] = $value;
+            $normalizedFilter[$field] = $value;
         }
 
         return $normalizedFilter;
@@ -177,6 +178,7 @@ class Finder
     {
         $elasticSorts = [];
         foreach ($sort as $property => $term) {
+            $property = $mapping->normalizePropertyCode($property);
             if (!$mapping->getProperties()->offsetExists($property)) {
                 if ($this->strictMode) throw new InvalidArgumentException("$property не найден в карте индекса для сортировки.");
                 continue;

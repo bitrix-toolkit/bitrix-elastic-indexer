@@ -3,6 +3,7 @@
 namespace Sheerockoff\BitrixElastic;
 
 use ArrayObject;
+use InvalidArgumentException;
 use JsonSerializable;
 
 class IndexMapping implements JsonSerializable
@@ -30,7 +31,27 @@ class IndexMapping implements JsonSerializable
 
     public function getProperty(string $code): PropertyMapping
     {
-        return $this->properties[$code];
+        $property = $this->properties[$code] ?? null;
+        if ($property instanceof PropertyMapping) {
+            return $property;
+        } else {
+            throw new InvalidArgumentException(sprintf('Свойство "%s" не найдено в карте индекса.', $code));
+        }
+    }
+
+    public function normalizePropertyCode(string $code): string
+    {
+        if (array_key_exists($code, $this->properties->getArrayCopy())) {
+            return $code;
+        }
+
+        foreach (array_keys($this->properties->getArrayCopy()) as $existCode) {
+            if (strtolower($existCode) === strtolower($code)) {
+                return $existCode;
+            }
+        }
+
+        return $code;
     }
 
     /**

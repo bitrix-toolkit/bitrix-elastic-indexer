@@ -693,8 +693,7 @@ class IndexerTest extends TestCase
     {
         sleep(1);
 
-        /** @var Indexer $indexer */
-        $indexer = $stack['indexer'];
+        $indexer = new Indexer(self::getElasticClient(), false);
 
         $mobileSection = CIBlockSection::GetList(null, ['IBLOCK_ID' => $stack['iBlockId'], 'CODE' => 'mobile'])->Fetch();
         $this->assertNotEmpty($mobileSection['ID']);
@@ -888,7 +887,21 @@ class IndexerTest extends TestCase
                     "\t 12999.00  ",
                     " 14999",
                 ],
-            ]
+            ],
+            // Фильтры не зависят от регистра. Но в Битрикс `NAME`, почему-то, зависит.
+            // Не стал делать исключение для этого поля в Indexer.
+            [
+                'pRoPeRtY_cOlOr_vAlUe' => 'Silver',
+            ],
+            [
+                '>cAtAlOg_pRiCe_' . $basePriceId => 9999,
+            ],
+            [
+                'aCtIvE' => 'Y',
+            ],
+            [
+                '!AcTiVe' => 'n',
+            ],
         ];
 
         foreach ($filters as $filter) {
@@ -948,6 +961,10 @@ class IndexerTest extends TestCase
         $sorts = [
             ['SORT' => 'ASC', 'ID' => 'DESC'],
             ['SORT' => 'DESC', 'ID' => 'DESC'],
+            ['sort' => 'asc', 'id' => 'desc'],
+            ['sort' => 'desc', 'id' => 'desc'],
+            ['sOrT' => 'aSc', 'Id' => 'DeSc'],
+            ['sOrT' => 'dEsC', 'Id' => 'DeSc'],
             ['CATALOG_PRICE_' . $basePriceId => 'ASC', 'ID' => 'DESC'],
             ['CATALOG_PRICE_' . $basePriceId => 'DESC', 'ID' => 'DESC'],
             ['CATALOG_STORE_AMOUNT_' . $mainStoreId => 'ASC', 'ID' => 'DESC'],
