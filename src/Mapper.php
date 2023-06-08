@@ -6,7 +6,8 @@ use CCatalogGroup;
 use CCatalogStore;
 use CIBlockProperty;
 use CModule;
-use Elasticsearch\Client;
+use Elastic\Elasticsearch\Client;
+use Elastic\Elasticsearch\Exception\ClientResponseException;
 
 class Mapper
 {
@@ -126,15 +127,30 @@ class Mapper
         return $setting ?? $default;
     }
 
+    /**
+     * @throws ClientResponseException
+     * @throws \Elastic\Elasticsearch\Exception\ServerResponseException
+     * @throws \Elastic\Elasticsearch\Exception\MissingParameterException
+     */
     public function putMapping(string $index, IndexMapping $mapping): bool
     {
         if (array_key_exists($index, $this->runtimeCache['mapping'] ?? [])) {
             unset($this->runtimeCache['mapping'][$index]);
         }
 
-        if ($this->elastic->indices()->exists(['index' => $index])) {
-            $response = $this->elastic->indices()->getMapping(['index' => $index]);
-            $existMappingData = $response[$index]['mappings'] ?: [];
+        if ($this->elastic->indices()->exists(['index' => $index])->asBool()) {
+            try {
+                $response = $this->elastic->indices()->getMapping(['index' => $index]);
+                $existMappingData = $response[$index]['mappings'] ?: [];
+            }
+            catch (ClientResponseException $exception) {
+                if ($exception->getCode() === 404) {
+                    $existMappingData = [];
+                }
+                else {
+                    throw $exception;
+                }
+            }
         } else {
             $this->elastic->indices()->create(['index' => $index]);
             $existMappingData = [];
