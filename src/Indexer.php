@@ -3,7 +3,7 @@
 namespace Sheerockoff\BitrixElastic;
 
 use _CIBElement;
-use Elasticsearch\Client;
+use Elastic\Elasticsearch\Client;
 use Exception;
 
 class Indexer

@@ -17,7 +17,7 @@
     "require": {
         "php": ">=7.2",
         "ext-json": "*",
-        "elasticsearch/elasticsearch": "^7.1"
+        "elasticsearch/elasticsearch": "^8.8"
     },
     "autoload-dev": {
         "psr-4": {
@@ -28,5 +28,10 @@
         "phpunit/phpunit": "^9.6",
         "symfony/var-dumper": "^4.3",
         "sheerockoff/bitrix-ci": "21.400"
+    },
+    "config": {
+        "allow-plugins": {
+            "php-http/discovery": true
+        }
     }
 }

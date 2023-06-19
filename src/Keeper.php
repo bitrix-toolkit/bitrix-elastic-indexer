@@ -8,7 +8,7 @@ use CCatalogStoreProduct;
 use CIBlockElement;
 use CIBlockSection;
 use CModule;
-use Elasticsearch\Client;
+use Elastic\Elasticsearch\Client;
 use Exception;
 
 class Keeper
@@ -128,7 +128,7 @@ class Keeper
             ]
         ];
 
-        $response = $this->elastic->update($params);
+        $response = $this->elastic->update($params)->asArray();
 
         return isset($response['result']) && in_array($response['result'], ['created', 'updated', 'noop']);
     }

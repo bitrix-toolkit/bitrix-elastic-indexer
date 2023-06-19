@@ -2,7 +2,7 @@
 
 namespace Sheerockoff\BitrixElastic;
 
-use Elasticsearch\Client;
+use Elastic\Elasticsearch\Client;
 use Exception;
 use InvalidArgumentException;
 use stdClass;
@@ -34,7 +34,7 @@ class Finder
     public function search(string $index, array $filter, array $sort = ['SORT' => 'ASC', 'ID' => 'DESC'], array $parameters = []): array
     {
         $params = $this->prefabElasticSearchParams($index, $filter, $sort, $parameters);
-        return $this->elastic->search($params);
+        return $this->elastic->search($params)->asArray();
     }
 
     /**
