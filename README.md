@@ -110,3 +110,12 @@ $response = $indexer->search('goods', ['ACTIVE' => 'Y'], ['ID' => 'ASC'], [
     'size' => 20
 ]);
 ```
+
+## Разработка и тестирование
+
+Запуск тестов в контейнерах Docker:
+```bash
+docker compose up -d
+docker compose exec bitrix composer install
+docker compose exec bitrix vendor/bin/phpunit
+```
